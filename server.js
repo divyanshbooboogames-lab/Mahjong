@@ -19,6 +19,7 @@ const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
   : (process.env.NODE_ENV === 'production' ? [] : ['http://localhost:3000']);
 
 const io = new Server(server, {
+  serveClient: false,
   cors: {
     origin: ALLOWED_ORIGINS.length > 0 ? ALLOWED_ORIGINS : false,
     methods: ['GET', 'POST']
