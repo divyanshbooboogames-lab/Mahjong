@@ -1,7 +1,7 @@
 {
   "name": "lets-mahjong",
-  "version": "1.0.0",
-  "description": "Lets Mahjong \u2014 Multiplayer hand scanner and scorer",
+  "version": "2.0.0",
+  "description": "Lets Mahjong \u2014 Score Calculator with AI Tile Recognition",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -10,7 +10,6 @@
   "dependencies": {
     "express": "^4.18.2",
     "openai": "^4.73.0",
-    "socket.io": "^4.7.4",
     "helmet": "^7.1.0",
     "express-rate-limit": "^7.1.5"
   },

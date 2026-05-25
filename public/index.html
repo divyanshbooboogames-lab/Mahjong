@@ -3,1097 +3,427 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Lets Mahjong — Play Together</title>
+  <title>Lets Mahjong — Score Calculator</title>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800;900&family=Bungee+Shade&family=Bangers&family=Permanent+Marker&display=swap" rel="stylesheet">
-  <script src="https://cdn.socket.io/4.7.4/socket.io.min.js" crossorigin="anonymous"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     :root {
-      --pink: #FAE0E4; --pink-light: #FFF0F3; --pink-hot: #D4508B; --pink-mid: #F5B6C4;
-      --teal: #0D9B76; --teal-dark: #087A5E; --teal-light: #E8F8F2;
-      --purple: #7C3AED; --orange: #F59E0B; --blue: #3B82F6;
-      --gold: #D4A017; --gold-light: #F5D56E; --gold-glow: rgba(212,160,23,0.4);
-      --neon-teal: #00FFD1; --neon-pink: #FF2D7B; --neon-gold: #FFD700;
-      --white: #FFFFFF; --dark: #0A0A1A; --dark-mid: #12122A; --gray: #94A3B8;
-      --shadow: 0 4px 24px rgba(0,0,0,0.08);
-      --shadow-lg: 0 12px 40px rgba(0,0,0,0.15);
-      --shadow-neon: 0 0 40px rgba(0,255,209,0.15), 0 0 80px rgba(0,255,209,0.05);
-      --radius: 20px; --radius-sm: 12px;
+      --neon-teal: #00FFD1;
+      --neon-pink: #FF2D7B;
+      --neon-gold: #FFD700;
+      --neon-purple: #7C3AED;
+      --dark-bg: #0A0A1A;
+      --card-bg: rgba(255,255,255,0.06);
+      --card-border: rgba(255,255,255,0.1);
+      --gray: rgba(255,255,255,0.5);
     }
-    body { font-family: 'Poppins', sans-serif; background: var(--dark); color: var(--dark); min-height: 100dvh; overflow-x: hidden; }
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: var(--dark-bg);
+      color: white;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
 
-    /* ============ CINEMATIC BACKGROUND ============ */
-    .bg-pattern {
-      position: fixed; inset: 0; z-index: 0; overflow: hidden;
-      background: radial-gradient(ellipse at 20% 50%, #0F2847 0%, transparent 50%),
-                  radial-gradient(ellipse at 80% 20%, #1A0A2E 0%, transparent 50%),
-                  radial-gradient(ellipse at 50% 100%, #0D1B2A 0%, transparent 50%),
-                  linear-gradient(180deg, #050510, #0A0A1A, #0D1525);
-    }
-    /* Animated aurora glow */
-    .bg-pattern::before {
-      content: ''; position: absolute; inset: -50%; z-index: 0;
-      background: conic-gradient(from 0deg at 50% 50%, transparent 0deg, rgba(0,255,209,0.03) 60deg, transparent 120deg, rgba(212,80,139,0.03) 180deg, transparent 240deg, rgba(212,160,23,0.03) 300deg, transparent 360deg);
-      animation: auroraRotate 25s linear infinite;
-    }
-    @keyframes auroraRotate { to { transform: rotate(360deg); } }
-    .bg-pattern::after {
-      content: ''; position: absolute; inset: 0; z-index: 1;
-      background: radial-gradient(circle at 50% 30%, rgba(0,255,209,0.06) 0%, transparent 60%);
-      animation: aurroraPulse 8s ease-in-out infinite alternate;
-    }
-    @keyframes aurroraPulse { from { opacity: 0.5; } to { opacity: 1; } }
-
-    /* Floating 3D Mahjong tiles */
+    /* ---- BACKGROUND ---- */
+    #bgPattern { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
     .tile-float {
-      position: absolute; font-size: 40px; color: white; z-index: 2;
-      animation: floatTile3D var(--dur, 20s) infinite linear;
-      opacity: 0;
+      position: absolute; bottom: -60px; opacity: var(--o, 0.06);
+      animation: tileRise var(--dur, 20s) linear infinite;
+      font-size: 40px; color: rgba(255,255,255,0.15);
       text-shadow: 0 0 20px rgba(0,255,209,0.3);
-      filter: blur(0.5px);
+      transform: rotate(0deg);
     }
-    @keyframes floatTile3D {
-      0% { transform: translateY(110vh) translateX(0) rotateX(0deg) rotateY(0deg) scale(0.8); opacity: 0; }
-      5% { opacity: var(--o, 0.08); }
-      90% { opacity: var(--o, 0.08); }
-      100% { transform: translateY(-10vh) translateX(calc(var(--drift, 0) * 1px)) rotateX(360deg) rotateY(180deg) scale(1.1); opacity: 0; }
+    @keyframes tileRise {
+      0% { transform: translateY(0) translateX(0) rotate(0deg); opacity: 0; }
+      10% { opacity: var(--o, 0.06); }
+      90% { opacity: var(--o, 0.06); }
+      100% { transform: translateY(-110vh) translateX(calc(var(--drift, 0) * 1px)) rotate(360deg); opacity: 0; }
     }
-
-    /* Particle sparkles */
     .particle {
-      position: absolute; width: 2px; height: 2px; border-radius: 50%; z-index: 2; pointer-events: none;
-      animation: sparkle var(--dur, 4s) ease-in-out infinite;
+      position: absolute; border-radius: 50%;
+      animation: sparkle var(--dur, 4s) ease-in-out infinite alternate;
     }
-    @keyframes sparkle {
-      0%, 100% { opacity: 0; transform: scale(0); }
-      50% { opacity: 1; transform: scale(1); }
+    @keyframes sparkle { 0% { opacity: 0; transform: scale(0.5); } 100% { opacity: 0.8; transform: scale(1.2); } }
+
+    /* Aurora gradient background */
+    body::before {
+      content: ''; position: fixed; inset: 0; z-index: -1;
+      background: radial-gradient(ellipse at 20% 50%, rgba(0,255,209,0.08) 0%, transparent 60%),
+                  radial-gradient(ellipse at 80% 20%, rgba(124,58,237,0.08) 0%, transparent 60%),
+                  radial-gradient(ellipse at 50% 90%, rgba(255,45,123,0.06) 0%, transparent 60%),
+                  var(--dark-bg);
     }
 
-    /* ============ SCREENS ============ */
-    .screen { display: none; position: relative; z-index: 3; min-height: 100dvh; padding: 20px 16px; }
-    .screen.active { display: flex; flex-direction: column; align-items: center; animation: screenReveal 0.8s cubic-bezier(0.16, 1, 0.3, 1) both; }
-    .screen.exit { animation: screenExit 0.4s cubic-bezier(0.4, 0, 1, 1) forwards; pointer-events: none; }
-    @keyframes screenReveal {
-      0% { opacity: 0; transform: translateY(50px) scale(0.92); filter: blur(12px); }
-      60% { filter: blur(0); }
-      100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+    /* ---- LAYOUT ---- */
+    .screen { display: none; position: relative; z-index: 1; min-height: 100vh; padding: 20px; justify-content: center; align-items: center; flex-direction: column; }
+    .screen.active { display: flex; animation: fadeIn 0.4s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+
+    .container { width: 100%; max-width: 440px; }
+
+    /* ---- LOGO ---- */
+    .logo { text-align: center; margin-bottom: 24px; }
+    .logo-text {
+      font-family: 'Bungee Shade', cursive; font-size: 28px;
+      background: linear-gradient(135deg, var(--neon-teal), var(--neon-gold));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      filter: drop-shadow(0 0 20px rgba(0,255,209,0.3));
     }
-    @keyframes screenExit {
-      0% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
-      100% { opacity: 0; transform: translateY(-30px) scale(1.04); filter: blur(6px); }
+    .logo-sub {
+      font-family: 'Bangers', cursive; font-size: 16px; letter-spacing: 4px;
+      color: var(--neon-pink); margin-top: 4px;
     }
 
-    /* ============ BUTTON RIPPLE & MICRO-INTERACTIONS ============ */
-    .btn { position: relative; overflow: hidden; }
-    .ripple-effect {
-      position: absolute; border-radius: 50%; background: rgba(255,255,255,0.3);
-      transform: scale(0); animation: rippleAnim 0.6s ease-out forwards; pointer-events: none;
-    }
-    @keyframes rippleAnim {
-      to { transform: scale(4); opacity: 0; }
-    }
-    .btn:active { transform: scale(0.95) !important; transition: transform 0.1s; }
-    .btn-teal:active { box-shadow: 0 2px 15px rgba(0,255,209,0.6), inset 0 0 20px rgba(0,255,209,0.2); }
-    .btn-pink:active { box-shadow: 0 2px 15px rgba(255,45,123,0.6), inset 0 0 20px rgba(255,45,123,0.2); }
-
-    /* Seat hover magnetic effect */
-    .seat { transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
-    .seat:hover { transform: scale(1.15) !important; }
-    .seat.mine { animation: seatPulse 2s ease-in-out infinite; }
-    @keyframes seatPulse {
-      0%, 100% { box-shadow: 0 0 20px rgba(0,255,209,0.3), 0 0 40px rgba(0,255,209,0.1); }
-      50% { box-shadow: 0 0 30px rgba(0,255,209,0.5), 0 0 60px rgba(0,255,209,0.2); transform: scale(1.05); }
+    /* ---- GLASS CARD ---- */
+    .glass {
+      background: rgba(255,255,255,0.05);
+      backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--card-border);
+      border-radius: 20px; padding: 28px 24px;
     }
 
-    /* Chip toggle spring */
-    .chip { transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
-    .chip:active { transform: scale(0.92); }
-    .chip.active { transform: scale(1.05); }
-
-    /* ============ STAGGERED LIST ANIMATIONS ============ */
-    .lobby-player { animation: slideInStagger 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
-    @keyframes slideInStagger {
-      from { opacity: 0; transform: translateX(-30px) scale(0.95); filter: blur(4px); }
-      to { opacity: 1; transform: translateX(0) scale(1); filter: blur(0); }
-    }
-    .scan-badge { animation: badgePop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
-    @keyframes badgePop {
-      from { opacity: 0; transform: scale(0.5); }
-      to { opacity: 1; transform: scale(1); }
-    }
-    .sb-player-row { animation: scoreSlideIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) both; }
-    @keyframes scoreSlideIn {
-      from { opacity: 0; transform: translateX(40px) scale(0.95); }
-      to { opacity: 1; transform: translateX(0) scale(1); }
+    /* ---- SETTINGS ---- */
+    .setting-group { margin-bottom: 20px; }
+    .setting-label {
+      font-family: 'Bangers', cursive; font-size: 14px; letter-spacing: 2px;
+      color: var(--gray); margin-bottom: 8px;
     }
 
-    /* ============ TILE DETECTION FLIP ============ */
-    .detected-tile {
-      animation: tileFlipIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
-      transition: transform 0.2s;
+    /* Select dropdown */
+    .sel {
+      width: 100%; padding: 12px 16px; border-radius: 12px;
+      background: rgba(0,255,209,0.08); border: 1px solid rgba(0,255,209,0.2);
+      color: white; font-family: 'Poppins', sans-serif; font-size: 14px; font-weight: 600;
+      appearance: none; cursor: pointer; outline: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2300FFD1'%3E%3Cpath d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 14px center;
+      transition: border-color 0.2s;
     }
-    .detected-tile:hover { transform: translateY(-4px) scale(1.1); }
-    @keyframes tileFlipIn {
-      0% { opacity: 0; transform: rotateY(180deg) scale(0.5); }
-      60% { transform: rotateY(-10deg) scale(1.05); }
-      100% { opacity: 1; transform: rotateY(0) scale(1); }
+    .sel:focus { border-color: var(--neon-teal); }
+    .sel option { background: #1a1a2e; color: white; }
+
+    /* Wind buttons */
+    .wind-row { display: flex; gap: 8px; }
+    .wind-btn {
+      flex: 1; padding: 10px 0; border-radius: 12px; border: 1px solid rgba(255,255,255,0.15);
+      background: rgba(255,255,255,0.05); color: var(--gray);
+      font-family: 'Bangers', cursive; font-size: 15px; letter-spacing: 1px;
+      cursor: pointer; transition: all 0.25s; text-align: center;
+    }
+    .wind-btn:hover { border-color: rgba(0,255,209,0.3); }
+    .wind-btn.active {
+      background: rgba(0,255,209,0.15); border-color: var(--neon-teal);
+      color: var(--neon-teal); box-shadow: 0 0 15px rgba(0,255,209,0.2);
     }
 
-    /* ============ SCANNING EFFECTS ============ */
+    /* Toggle switches */
+    .toggle-row { display: flex; flex-wrap: wrap; gap: 8px; }
+    .toggle-chip {
+      padding: 8px 16px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.15);
+      background: rgba(255,255,255,0.05); color: var(--gray);
+      font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.25s;
+      user-select: none;
+    }
+    .toggle-chip:hover { border-color: rgba(255,215,0,0.3); }
+    .toggle-chip.active {
+      background: rgba(255,215,0,0.15); border-color: var(--neon-gold);
+      color: var(--neon-gold); box-shadow: 0 0 12px rgba(255,215,0,0.15);
+    }
+
+    /* CTA button */
+    .btn-scan {
+      width: 100%; padding: 16px; margin-top: 24px; border: none; border-radius: 14px;
+      background: linear-gradient(135deg, var(--neon-teal), #0D9B76);
+      color: #0A0A1A; font-family: 'Bangers', cursive; font-size: 20px; letter-spacing: 2px;
+      cursor: pointer; position: relative; overflow: hidden;
+      transition: transform 0.15s, box-shadow 0.2s;
+      box-shadow: 0 4px 25px rgba(0,255,209,0.3);
+    }
+    .btn-scan:hover { transform: translateY(-2px); box-shadow: 0 6px 30px rgba(0,255,209,0.4); }
+    .btn-scan:active { transform: scale(0.97); }
+
+    .btn-pink {
+      width: 100%; padding: 14px; border: none; border-radius: 14px;
+      background: linear-gradient(135deg, var(--neon-pink), #D4508B);
+      color: white; font-family: 'Bangers', cursive; font-size: 17px; letter-spacing: 2px;
+      cursor: pointer; transition: transform 0.15s;
+      box-shadow: 0 4px 20px rgba(255,45,123,0.3);
+    }
+    .btn-pink:hover { transform: translateY(-2px); }
+    .btn-pink:active { transform: scale(0.97); }
+
+    .btn-outline {
+      width: 100%; padding: 12px; border: 1px solid rgba(255,255,255,0.2); border-radius: 14px;
+      background: rgba(255,255,255,0.05); color: white;
+      font-family: 'Poppins', sans-serif; font-size: 14px; font-weight: 600;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .btn-outline:hover { border-color: rgba(255,255,255,0.4); background: rgba(255,255,255,0.08); }
+
+    /* ---- CAMERA / SCAN ---- */
+    .camera-zone {
+      width: 100%; aspect-ratio: 4/3; border: 2px dashed rgba(0,255,209,0.3);
+      border-radius: 16px; display: flex; align-items: center; justify-content: center;
+      cursor: pointer; position: relative; overflow: hidden;
+      background: rgba(0,0,0,0.3); transition: border-color 0.3s;
+    }
+    .camera-zone:hover { border-color: var(--neon-teal); }
+    .camera-zone.has-image { border-style: solid; }
+    .camera-zone img { width: 100%; height: 100%; object-fit: cover; border-radius: 14px; }
+    .camera-zone input[type=file] { display: none; }
+    .camera-prompt { text-align: center; color: var(--gray); }
+    .camera-prompt .icon { font-size: 48px; margin-bottom: 8px; }
+    .camera-prompt p { font-size: 13px; }
+
+    /* Scan beam */
     .scan-beam {
       position: absolute; left: 0; right: 0; height: 3px;
       background: linear-gradient(90deg, transparent, var(--neon-teal), transparent);
-      box-shadow: 0 0 20px var(--neon-teal), 0 0 60px rgba(0,255,209,0.3);
-      animation: scanBeam 2s ease-in-out infinite;
-      border-radius: 2px; z-index: 5; pointer-events: none;
+      box-shadow: 0 0 15px var(--neon-teal);
+      animation: scanMove 1.8s ease-in-out infinite;
     }
-    @keyframes scanBeam {
-      0% { top: 0; opacity: 0; }
-      10% { opacity: 1; }
-      90% { opacity: 1; }
-      100% { top: 100%; opacity: 0; }
-    }
-    .scan-pulse { animation: scanPulseAnim 1.5s ease-in-out infinite; }
-    @keyframes scanPulseAnim {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(0,255,209,0.3); }
-      50% { box-shadow: 0 0 0 12px rgba(0,255,209,0); }
-    }
+    @keyframes scanMove { 0%, 100% { top: 10%; } 50% { top: 90%; } }
 
-    /* Score count-up glow */
-    .score-reveal { animation: scoreReveal 0.8s cubic-bezier(0.16, 1, 0.3, 1) both; }
-    @keyframes scoreReveal {
-      0% { opacity: 0; transform: scale(0.5); filter: blur(8px); }
-      50% { transform: scale(1.2); }
-      100% { opacity: 1; transform: scale(1); filter: blur(0); }
+    /* Detected tiles */
+    .tiles-grid {
+      display: flex; flex-wrap: wrap; gap: 6px; justify-content: center;
+      padding: 16px 0;
     }
+    .tile-chip {
+      width: 40px; height: 52px; border: 2px solid rgba(255,255,255,0.2);
+      border-radius: 8px; background: rgba(255,255,255,0.08);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; font-weight: 700;
+      animation: tileFlip 0.4s ease backwards;
+    }
+    @keyframes tileFlip { from { transform: rotateY(90deg); opacity: 0; } to { transform: rotateY(0); opacity: 1; } }
 
-    /* Winner crown bounce */
-    .winner-bounce { animation: winnerBounce 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
-    @keyframes winnerBounce {
-      0% { opacity: 0; transform: translateY(-40px) scale(0.5) rotate(-15deg); }
-      60% { transform: translateY(5px) scale(1.1) rotate(5deg); }
-      100% { opacity: 1; transform: translateY(0) scale(1) rotate(0deg); }
+    .scan-status {
+      text-align: center; padding: 20px; color: var(--neon-teal);
+      font-size: 13px;
     }
-
-    /* ============ ENHANCED CONFETTI ============ */
-    .confetti-piece {
-      position: absolute; top: -20px;
-      animation: confettiBurst 3.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+    .scan-status .spinner {
+      width: 36px; height: 36px; border: 3px solid rgba(0,255,209,0.2);
+      border-top-color: var(--neon-teal); border-radius: 50%;
+      animation: spin 0.8s linear infinite; margin: 0 auto 12px;
     }
-    @keyframes confettiBurst {
-      0% { transform: translateY(0) translateX(0) rotate(0deg) scale(1); opacity: 1; }
-      20% { opacity: 1; }
-      100% { transform: translateY(110vh) translateX(var(--drift, 0px)) rotate(var(--rot, 720deg)) scale(0.5); opacity: 0; }
-    }
-
-    /* Screen flash on win */
-    .win-flash {
-      position: fixed; inset: 0; z-index: 998; pointer-events: none;
-      background: radial-gradient(circle, rgba(0,255,209,0.3), transparent 70%);
-      animation: winFlash 0.6s ease-out forwards;
-    }
-    @keyframes winFlash {
-      0% { opacity: 1; }
-      100% { opacity: 0; }
-    }
-
-    /* Neon ring burst */
-    .neon-ring {
-      position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-      width: 10px; height: 10px; border-radius: 50%; z-index: 997; pointer-events: none;
-      border: 3px solid var(--neon-teal);
-      animation: neonRingBurst 0.8s ease-out forwards;
-    }
-    @keyframes neonRingBurst {
-      0% { width: 10px; height: 10px; opacity: 1; border-width: 3px; }
-      100% { width: 400px; height: 400px; opacity: 0; border-width: 1px; }
-    }
-
-    /* Trophy shake */
-    .trophy-shake { display: inline-block; animation: trophyShake 0.6s cubic-bezier(0.36, 0.07, 0.19, 0.97) both; }
-    @keyframes trophyShake {
-      10%, 90% { transform: rotate(-3deg); }
-      20%, 80% { transform: rotate(5deg); }
-      30%, 50%, 70% { transform: rotate(-8deg); }
-      40%, 60% { transform: rotate(8deg); }
-    }
-
-    /* Toast slide up */
-    .toast { transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.4s; opacity: 0; }
-    .toast.show { opacity: 1; }
-
-        /* ============ CINEMATIC GLASS CARD ============ */
-    .glass-card {
-      background: rgba(12, 12, 30, 0.7);
-      backdrop-filter: blur(24px) saturate(1.5); -webkit-backdrop-filter: blur(24px) saturate(1.5);
-      border-radius: var(--radius); padding: 32px 28px;
-      width: 100%; max-width: 420px;
-      border: 1px solid rgba(0,255,209,0.12);
-      box-shadow: 0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05), var(--shadow-neon);
-      animation: cardFloat 6s ease-in-out infinite alternate;
-    }
-    @keyframes cardFloat { from { transform: translateY(0); } to { transform: translateY(-4px); } }
-
-    /* ============ CINEMATIC TYPOGRAPHY ============ */
-    .logo-text {
-      font-size: 48px; font-weight: 900; text-align: center; letter-spacing: 2px;
-      animation: logoReveal 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both;
-    }
-    @keyframes logoReveal {
-      from { opacity: 0; transform: translateY(-30px) scale(0.8); filter: blur(12px); }
-      to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
-    }
-    .logo-text .lets {
-      color: var(--neon-teal);
-      text-shadow: 0 0 20px rgba(0,255,209,0.5), 0 0 40px rgba(0,255,209,0.2), 0 2px 4px rgba(0,0,0,0.5);
-    }
-    .logo-text .mj {
-      color: var(--neon-pink);
-      text-shadow: 0 0 20px rgba(255,45,123,0.5), 0 0 40px rgba(255,45,123,0.2), 0 2px 4px rgba(0,0,0,0.5);
-    }
-    .logo-sub {
-      text-align: center; font-size: 14px; font-weight: 600; margin-bottom: 32px; letter-spacing: 3px; text-transform: uppercase;
-      background: linear-gradient(90deg, var(--neon-teal), var(--neon-gold), var(--neon-pink));
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
-      animation: logoReveal 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.5s both;
-    }
-    /* Decorative mahjong tile row under the title */
-    .logo-tiles {
-      display: flex; justify-content: center; gap: 6px; margin-bottom: 24px;
-      animation: logoReveal 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.7s both;
-    }
-    .logo-tile {
-      width: 32px; height: 42px; border-radius: 6px; display: flex; align-items: center; justify-content: center;
-      font-size: 18px; font-weight: 800;
-      background: linear-gradient(180deg, #2A2A4A, #1A1A30);
-      border: 1px solid rgba(255,255,255,0.1);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08);
-      animation: tileEnter 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both;
-      animation-delay: calc(0.8s + var(--i, 0) * 0.08s);
-    }
-    @keyframes tileEnter {
-      from { opacity: 0; transform: translateY(20px) rotateX(90deg); }
-      to { opacity: 1; transform: translateY(0) rotateX(0); }
-    }
-
-    .section-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; color: rgba(0,255,209,0.6); margin-bottom: 10px; }
-
-    /* ============ CINEMATIC INPUTS ============ */
-    .input-field {
-      width: 100%; padding: 14px 18px;
-      border: 2px solid rgba(255,255,255,0.1); border-radius: var(--radius-sm);
-      font-family: 'Poppins', sans-serif; font-size: 16px; font-weight: 600;
-      color: white; background: rgba(255,255,255,0.06);
-      transition: all 0.3s; outline: none;
-    }
-    .input-field:focus { border-color: var(--neon-teal); box-shadow: 0 0 0 4px rgba(0,255,209,0.1), 0 0 20px rgba(0,255,209,0.1); background: rgba(255,255,255,0.08); }
-    .input-field::placeholder { color: rgba(255,255,255,0.3); font-weight: 400; }
-    .select-field { width: 100%; padding: 14px 18px; border: 2px solid rgba(255,255,255,0.1); border-radius: var(--radius-sm); font-family: 'Poppins', sans-serif; font-size: 14px; font-weight: 600; color: white; background: rgba(255,255,255,0.06); cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2300FFD1' stroke-width='2' fill='none'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; transition: all 0.2s; }
-    .select-field option { background: #1A1A2E; color: white; }
-    .select-field:focus { border-color: var(--neon-teal); outline: none; }
-
-    /* ============ CINEMATIC BUTTONS ============ */
-    .btn { width: 100%; padding: 16px 24px; border: none; border-radius: 50px; font-family: 'Poppins', sans-serif; font-size: 16px; font-weight: 700; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; justify-content: center; gap: 10px; position: relative; overflow: hidden; }
-    .btn::before { content: ''; position: absolute; inset: 0; border-radius: 50px; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent); transform: translateX(-100%); transition: none; }
-    .btn:hover::before { animation: btnShine 0.6s ease forwards; }
-    @keyframes btnShine { to { transform: translateX(100%); } }
-    .btn:active { transform: scale(0.97); }
-    .btn:disabled { opacity: 0.3; cursor: not-allowed; transform: none; }
-    .btn:disabled::before { display: none; }
-    .btn-teal {
-      background: linear-gradient(135deg, #00D4AA, var(--teal), var(--teal-dark)); color: white;
-      box-shadow: 0 6px 30px rgba(0,255,209,0.3), 0 2px 8px rgba(0,0,0,0.3);
-      text-shadow: 0 1px 2px rgba(0,0,0,0.3);
-    }
-    .btn-teal:hover:not(:disabled) { box-shadow: 0 8px 40px rgba(0,255,209,0.5), 0 2px 8px rgba(0,0,0,0.3); transform: translateY(-2px); }
-    .btn-pink { background: linear-gradient(135deg, #FF4D8D, var(--pink-hot), #B83574); color: white; box-shadow: 0 6px 30px rgba(255,45,123,0.3); }
-    .btn-outline { background: transparent; color: var(--neon-teal); border: 2px solid rgba(0,255,209,0.4); }
-    .btn-outline:hover { background: rgba(0,255,209,0.08); border-color: var(--neon-teal); }
-    .btn-ghost { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.8); border: 1px solid rgba(255,255,255,0.12); }
-    .btn-ghost:hover { background: rgba(255,255,255,0.12); }
-    .btn-sm { padding: 10px 20px; font-size: 14px; width: auto; }
-
-    .spacer { height: 16px; } .spacer-sm { height: 10px; }
-
-    /* ============ CINEMATIC AVATAR ============ */
-    .avatar-row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin: 12px 0; }
-    .avatar-option {
-      width: 54px; height: 54px; border-radius: 50%;
-      border: 2px solid rgba(255,255,255,0.1);
-      display: flex; align-items: center; justify-content: center; font-size: 26px;
-      cursor: pointer; transition: all 0.3s;
-      background: rgba(255,255,255,0.05);
-      position: relative;
-    }
-    .avatar-option:hover { transform: scale(1.15); border-color: rgba(0,255,209,0.3); background: rgba(0,255,209,0.08); }
-    .avatar-option.selected {
-      border-color: var(--neon-teal);
-      box-shadow: 0 0 16px rgba(0,255,209,0.3), 0 0 4px rgba(0,255,209,0.5), inset 0 0 12px rgba(0,255,209,0.1);
-      transform: scale(1.15); background: rgba(0,255,209,0.1);
-      animation: avatarGlow 2s ease-in-out infinite alternate;
-    }
-    @keyframes avatarGlow { from { box-shadow: 0 0 16px rgba(0,255,209,0.3), 0 0 4px rgba(0,255,209,0.5); } to { box-shadow: 0 0 24px rgba(0,255,209,0.5), 0 0 8px rgba(0,255,209,0.7); } }
-
-    /* ============ CINEMATIC COLOR DOTS ============ */
-    .color-row { display: flex; gap: 10px; justify-content: center; margin: 12px 0; }
-    .color-dot {
-      width: 36px; height: 36px; border-radius: 50%;
-      border: 2px solid rgba(255,255,255,0.15);
-      cursor: pointer; transition: all 0.3s; position: relative;
-    }
-    .color-dot:hover { transform: scale(1.2); }
-    .color-dot.selected {
-      border-color: white;
-      box-shadow: 0 0 0 3px var(--dark), 0 0 0 5px currentColor, 0 0 20px currentColor;
-      transform: scale(1.2);
-    }
-
-    /* ROOM CODE */
-    .room-code-display { text-align: center; padding: 20px; background: linear-gradient(135deg, rgba(0,255,209,0.15), rgba(0,255,209,0.05)); border-radius: var(--radius); margin: 12px 0; border: 1px solid rgba(0,255,209,0.2); }
-    .room-code-display .code-label { font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.7); text-transform: uppercase; letter-spacing: 2px; }
-    .room-code-display .code-num { font-size: 48px; font-weight: 900; color: var(--neon-teal); letter-spacing: 12px; text-shadow: 0 0 20px rgba(0,255,209,0.4), 0 2px 8px rgba(0,0,0,0.3); }
-    .room-code-display .code-hint { font-size: 12px; color: rgba(255,255,255,0.6); margin-top: 4px; }
-
-    /* SEAT PICKER TABLE */
-    .table-container { position: relative; width: 260px; height: 260px; margin: 20px auto; }
-    .mj-table { position: absolute; inset: 40px; background: linear-gradient(135deg, #2D5A3D, #1E3F2B); border-radius: 16px; border: 4px solid #8B6914; box-shadow: 0 8px 32px rgba(0,0,0,0.3), inset 0 2px 8px rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; }
-    .mj-table .table-label { color: rgba(255,255,255,0.3); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; }
-    .seat { position: absolute; width: 64px; height: 64px; border-radius: 50%; background: rgba(255,255,255,0.1); border: 3px dashed rgba(255,255,255,0.3); display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: all 0.3s; z-index: 2; }
-    .seat .seat-wind { font-size: 20px; font-weight: 900; color: rgba(255,255,255,0.5); }
-    .seat .seat-label { font-size: 9px; font-weight: 600; color: rgba(255,255,255,0.4); text-transform: uppercase; }
-    .seat:hover { background: rgba(255,255,255,0.2); transform: scale(1.08); }
-    .seat.taken { background: var(--pink-hot); border: 3px solid white; cursor: default; }
-    .seat.taken .seat-wind, .seat.taken .seat-label { color: white; }
-    .seat.mine { background: var(--teal); border: 3px solid white; box-shadow: 0 0 20px rgba(13,155,118,0.5); animation: pulse 2s infinite; }
-    .seat.mine .seat-wind, .seat.mine .seat-label { color: white; }
-    @keyframes pulse { 0%,100% { box-shadow: 0 0 20px rgba(13,155,118,0.3); } 50% { box-shadow: 0 0 30px rgba(13,155,118,0.6); } }
-    .seat.pos-east { top: 50%; right: -10px; transform: translateY(-50%); }
-    .seat.pos-south { bottom: -10px; left: 50%; transform: translateX(-50%); }
-    .seat.pos-west { top: 50%; left: -10px; transform: translateY(-50%); }
-    .seat.pos-north { top: -10px; left: 50%; transform: translateX(-50%); }
-    .seat-player-name { position: absolute; font-size: 10px; font-weight: 700; color: white; white-space: nowrap; background: rgba(0,0,0,0.5); padding: 2px 8px; border-radius: 10px; }
-    .pos-east .seat-player-name { right: 72px; }
-    .pos-west .seat-player-name { left: 72px; }
-    .pos-north .seat-player-name { top: 72px; }
-    .pos-south .seat-player-name { bottom: 72px; }
-
-    /* LOBBY PLAYERS */
-    .lobby-players { display: flex; flex-direction: column; gap: 8px; margin: 12px 0; }
-    .lobby-player { display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: rgba(255,255,255,0.06); border-radius: var(--radius-sm); animation: slideIn 0.3s ease; border: 1px solid rgba(255,255,255,0.08); }
-    @keyframes slideIn { from { opacity: 0; transform: translateX(-12px); } to { opacity: 1; transform: translateX(0); } }
-    .lobby-player .lp-avatar { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; }
-    .lobby-player .lp-name { font-weight: 700; font-size: 14px; flex: 1; color: white; }
-    .lobby-player .lp-seat { font-size: 11px; font-weight: 700; color: var(--neon-teal); background: rgba(0,255,209,0.1); padding: 3px 10px; border-radius: 20px; border: 1px solid rgba(0,255,209,0.2); }
-    .lobby-player.is-host .lp-name::after { content: '  HOST'; font-size: 9px; color: var(--neon-gold); background: rgba(255,215,0,0.15); padding: 1px 6px; border-radius: 8px; margin-left: 6px; vertical-align: middle; }
-
-    /* SETTINGS */
-    .settings-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
-    .setting-box label { display: block; font-size: 11px; font-weight: 700; color: rgba(0,255,209,0.6); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 4px; }
-    .checkbox-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
-    .chip { display: flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 50px; font-size: 12px; font-weight: 600; cursor: pointer; border: 2px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.7); transition: all 0.2s; user-select: none; }
-    .chip:hover { border-color: rgba(0,255,209,0.3); }
-    .chip.active { border-color: var(--neon-teal); background: rgba(0,255,209,0.1); color: var(--neon-teal); }
-    .chip input { display: none; }
-
-    /* CAMERA */
-    .camera-zone { width: 100%; max-width: 360px; aspect-ratio: 4/3; border-radius: var(--radius); border: 3px dashed rgba(255,255,255,0.3); background: rgba(255,255,255,0.05); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; cursor: pointer; transition: all 0.3s; position: relative; overflow: hidden; margin: 16px auto; }
-    .camera-zone:hover { border-color: var(--teal); background: rgba(13,155,118,0.1); }
-    .camera-zone .cam-icon { font-size: 56px; opacity: 0.6; }
-    .camera-zone .cam-text { color: rgba(255,255,255,0.6); font-size: 14px; font-weight: 600; }
-    .camera-zone .cam-hint { color: rgba(255,255,255,0.4); font-size: 12px; }
-    .camera-zone.has-image { border-style: solid; border-color: var(--teal); }
-    .camera-zone.has-image img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: calc(var(--radius) - 3px); }
-    .camera-zone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
-
-    /* SCAN BADGES */
-    .scan-status-row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin: 12px 0; }
-    .scan-badge { padding: 6px 14px; border-radius: 50px; font-size: 12px; font-weight: 700; display: flex; align-items: center; gap: 6px; }
-    .scan-badge.waiting { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); }
-    .scan-badge.scanned { background: var(--teal); color: white; }
-    .scan-badge .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
-
-    /* SCOREBOARD */
-    .scoreboard { width: 100%; max-width: 420px; }
-    .sb-round-label { text-align: center; color: rgba(255,255,255,0.5); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 12px; }
-    .sb-player-row { display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: rgba(255,255,255,0.08); border-radius: var(--radius-sm); margin-bottom: 8px; border: 2px solid transparent; }
-    .sb-player-row.winner { background: rgba(13,155,118,0.2); border-color: var(--teal); }
-    .sb-player-row .sb-rank { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 900; background: rgba(255,255,255,0.15); color: rgba(255,255,255,0.6); }
-    .sb-player-row.winner .sb-rank { background: var(--teal); color: white; }
-    .sb-player-row .sb-avatar { font-size: 24px; }
-    .sb-player-row .sb-info { flex: 1; }
-    .sb-player-row .sb-name { font-size: 14px; font-weight: 700; color: white; }
-    .sb-player-row .sb-hand { font-size: 11px; color: rgba(255,255,255,0.5); }
-    .sb-player-row .sb-score { font-size: 22px; font-weight: 900; color: var(--teal); }
-    .sb-player-row.winner .sb-score { color: #4ADE80; }
-    .sb-total-bar { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: rgba(255,255,255,0.05); border-radius: var(--radius-sm); margin-top: 4px; }
-    .sb-total-bar .sb-total-name { font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.6); }
-    .sb-total-bar .sb-total-score { font-size: 16px; font-weight: 800; color: white; }
-
-    /* CONFETTI */
-    .confetti-container { position: fixed; inset: 0; pointer-events: none; z-index: 999; }
-    /* confetti-piece styles defined in animation section above */
-    /* confetti uses confettiBurst keyframe defined above */
-
-    .spinner { width: 40px; height: 40px; border: 3px solid rgba(0,255,209,0.15); border-top-color: var(--neon-teal); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 20px auto; box-shadow: 0 0 15px rgba(0,255,209,0.2); }
-    .spinner::after { content: ''; position: absolute; inset: 4px; border: 2px solid transparent; border-top-color: var(--neon-pink); border-radius: 50%; animation: spin 1.2s linear infinite reverse; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* TOAST */
-    .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--dark); color: white; padding: 12px 24px; border-radius: 30px; font-size: 14px; font-weight: 600; box-shadow: var(--shadow-lg); transition: transform 0.3s; z-index: 100; border: 1px solid rgba(255,255,255,0.2); }
+    .btn-row { display: flex; gap: 10px; margin-top: 16px; }
+    .btn-row > * { flex: 1; }
+
+    /* ---- RESULTS ---- */
+    .score-display { text-align: center; padding: 20px 0; }
+    .score-number {
+      font-family: 'Bungee Shade', cursive; font-size: 56px;
+      background: linear-gradient(135deg, var(--neon-gold), #F59E0B, var(--neon-gold));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      filter: drop-shadow(0 0 25px rgba(255,215,0,0.4));
+      animation: scoreReveal 0.6s ease backwards;
+    }
+    @keyframes scoreReveal { from { transform: scale(0.3); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .score-label { font-family: 'Bangers', cursive; font-size: 16px; color: var(--gray); letter-spacing: 3px; margin-top: 4px; }
+    .hand-name {
+      font-family: 'Permanent Marker', cursive; font-size: 22px;
+      color: var(--neon-teal); margin-top: 12px;
+      animation: fadeIn 0.5s ease 0.3s backwards;
+    }
+    .limit-badge {
+      display: inline-block; padding: 4px 16px; border-radius: 20px; margin-top: 8px;
+      background: rgba(255,215,0,0.15); border: 1px solid var(--neon-gold);
+      color: var(--neon-gold); font-family: 'Bangers', cursive; font-size: 14px; letter-spacing: 2px;
+    }
+
+    /* Score breakdown */
+    .breakdown { margin-top: 20px; }
+    .breakdown-title {
+      font-family: 'Bangers', cursive; font-size: 13px; letter-spacing: 2px;
+      color: var(--gray); margin-bottom: 10px; text-align: center;
+    }
+    .breakdown-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,0.06);
+      animation: slideIn 0.3s ease backwards;
+    }
+    @keyframes slideIn { from { transform: translateX(-15px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    .breakdown-row .label { font-size: 13px; color: rgba(255,255,255,0.7); }
+    .breakdown-row .value { font-family: 'Bangers', cursive; font-size: 15px; color: var(--neon-teal); }
+    .breakdown-row .value.gold { color: var(--neon-gold); }
+
+    /* Confetti canvas */
+    #confettiCanvas { position: fixed; inset: 0; z-index: 50; pointer-events: none; }
+
+    /* ---- TOAST ---- */
+    .toast {
+      position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(100px);
+      background: rgba(0,0,0,0.85); color: white; padding: 12px 24px;
+      border-radius: 12px; font-size: 13px; font-weight: 600; z-index: 100;
+      border: 1px solid var(--card-border); backdrop-filter: blur(10px);
+      transition: transform 0.3s ease; pointer-events: none;
+    }
     .toast.show { transform: translateX(-50%) translateY(0); }
 
-    /* CONNECTION */
-    .conn-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 4px; }
-    .conn-dot.green { background: #4ADE80; box-shadow: 0 0 6px #4ADE80; }
-    .conn-dot.red { background: #EF4444; box-shadow: 0 0 6px #EF4444; }
-    .conn-bar { position: fixed; top: 0; left: 0; right: 0; padding: 4px 12px; font-size: 11px; font-weight: 600; z-index: 50; text-align: center; }
-    .conn-bar.connected { background: rgba(13,155,118,0.9); color: white; }
-    .conn-bar.disconnected { background: rgba(239,68,68,0.9); color: white; }
-
-    /* HELPERS */
-    .text-center { text-align: center; }
-    .text-white { color: white; }
-    .text-muted { color: rgba(255,255,255,0.5); font-size: 13px; }
-    .mt-12 { margin-top: 12px; }
-    .fw-700 { font-weight: 700; }
-    .fs-14 { font-size: 14px; }
-    .mb-8 { margin-bottom: 8px; }
-    .divider { width: 100%; height: 1px; background: rgba(255,255,255,0.1); margin: 16px 0; }
-
-    @media (max-width: 400px) {
-      .glass-card { padding: 22px 18px; }
-      .logo-text { font-size: 30px; }
-      .room-code-display .code-num { font-size: 40px; letter-spacing: 8px; }
-      .table-container { width: 230px; height: 230px; }
-      .seat { width: 56px; height: 56px; }
+    /* ---- MUTE ---- */
+    .mute-btn {
+      position: fixed; top: 16px; right: 16px; z-index: 90;
+      width: 40px; height: 40px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.15);
+      background: rgba(0,0,0,0.4); backdrop-filter: blur(10px);
+      color: white; font-size: 18px; cursor: pointer; display: flex;
+      align-items: center; justify-content: center;
     }
 
-    /* ============ SPLASH OVERLAY ============ */
-    #splashOverlay {
-      position: fixed; inset: 0; z-index: 2000;
-      background: radial-gradient(ellipse at 50% 40%, #0D1B2A, #050510);
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      cursor: pointer; overflow: hidden;
+    /* ---- RIPPLE ---- */
+    .ripple-effect {
+      position: absolute; border-radius: 50%; background: rgba(255,255,255,0.2);
+      animation: ripple 0.5s ease-out; pointer-events: none;
     }
-    #splashOverlay.exit { animation: splashExit 0.8s cubic-bezier(0.4, 0, 1, 1) forwards; pointer-events: none; }
-    @keyframes splashExit {
-      0% { opacity: 1; transform: scale(1); filter: blur(0); }
-      100% { opacity: 0; transform: scale(1.15); filter: blur(20px); }
-    }
-    .splash-title { display: flex; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; justify-content: center; }
-    .splash-word { display: flex; }
-    .splash-letter {
-      display: inline-block; font-family: 'Bungee Shade', cursive;
-      font-size: 52px; opacity: 0;
-      animation: letterPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-      animation-delay: calc(var(--i) * 0.1s);
-    }
-    .splash-word.lets .splash-letter {
-      color: var(--neon-teal);
-      text-shadow: 0 0 30px rgba(0,255,209,0.6), 0 0 60px rgba(0,255,209,0.3);
-    }
-    .splash-word.mahjong .splash-letter {
-      color: var(--neon-pink);
-      text-shadow: 0 0 30px rgba(255,45,123,0.6), 0 0 60px rgba(255,45,123,0.3);
-      animation-delay: calc(0.5s + var(--i) * 0.1s);
-    }
-    @keyframes letterPop {
-      0% { opacity: 0; transform: translateY(-50px) scale(0.3) rotateX(90deg); filter: blur(10px); }
-      60% { transform: translateY(8px) scale(1.15) rotateX(-5deg); filter: blur(0); }
-      100% { opacity: 1; transform: translateY(0) scale(1) rotateX(0); }
-    }
-    .splash-sub {
-      font-family: 'Bangers', cursive; font-size: 18px; letter-spacing: 6px;
-      background: linear-gradient(90deg, var(--neon-teal), var(--neon-gold), var(--neon-pink));
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
-      opacity: 0; animation: fadeSlideUp 0.8s ease 1.5s forwards;
-    }
-    .splash-skip {
-      position: absolute; bottom: 40px; font-size: 13px; color: rgba(255,255,255,0.3);
-      font-family: 'Poppins', sans-serif; letter-spacing: 2px;
-      opacity: 0; animation: fadeSlideUp 0.5s ease 2s forwards;
-    }
-    @keyframes fadeSlideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-    .splash-tile {
-      position: absolute; font-size: 32px; opacity: 0; pointer-events: none; color: white;
-      animation: splashTileFall var(--dur, 4s) linear infinite; animation-delay: var(--delay, 0s);
-    }
-    @keyframes splashTileFall {
-      0% { transform: translateY(-60px) rotate(0deg); opacity: 0; }
-      10% { opacity: 0.05; } 90% { opacity: 0.05; }
-      100% { transform: translateY(110vh) rotate(360deg); opacity: 0; }
-    }
-    .splash-shockwave {
-      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-      width: 0; height: 0; border-radius: 50%; pointer-events: none;
-      border: 2px solid rgba(0,255,209,0.5); animation: shockwave 0.6s ease-out forwards;
-    }
-    @keyframes shockwave { 0% { width: 0; height: 0; opacity: 1; } 100% { width: 200vmax; height: 200vmax; opacity: 0; border-width: 0.5px; } }
+    @keyframes ripple { to { transform: scale(3); opacity: 0; } }
 
-    /* ============ FUNKY LOGO ============ */
-    .funky-logo {
-      font-family: 'Bungee Shade', cursive; font-size: 36px; text-align: center;
-      margin-bottom: 4px; letter-spacing: 2px; opacity: 0;
+    /* ---- RESPONSIVE ---- */
+    @media (max-width: 480px) {
+      .logo-text { font-size: 22px; }
+      .score-number { font-size: 42px; }
+      .glass { padding: 20px 16px; }
     }
-    .funky-logo .lets { color: var(--neon-teal); text-shadow: 0 0 20px rgba(0,255,209,0.5), 0 0 40px rgba(0,255,209,0.2); }
-    .funky-logo .mj { color: var(--neon-pink); text-shadow: 0 0 20px rgba(255,45,123,0.5), 0 0 40px rgba(255,45,123,0.2); }
-    .funky-sub {
-      font-family: 'Bangers', cursive; font-size: 16px; letter-spacing: 4px; text-align: center;
-      background: linear-gradient(90deg, var(--neon-teal), var(--neon-gold), var(--neon-pink));
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
-      margin-bottom: 20px; opacity: 0;
-    }
-    .section-funky {
-      font-family: 'Bangers', cursive; font-size: 18px; letter-spacing: 3px;
-      color: var(--neon-teal); text-align: center; margin-bottom: 14px;
-      text-shadow: 0 0 10px rgba(0,255,209,0.3);
-    }
-
-    /* ============ ANIMAL CARDS ============ */
-    .animal-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 24px; perspective: 800px; }
-    .animal-card {
-      position: relative; border-radius: 14px; padding: 12px 4px 8px;
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      cursor: pointer; transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-      border: 2px solid rgba(255,255,255,0.12); overflow: hidden; user-select: none; transform-style: preserve-3d;
-    }
-    .animal-card:hover { transform: scale(1.08) translateY(-4px) rotateX(5deg); border-color: rgba(255,255,255,0.3); }
-    .animal-card .card-emoji { font-size: 32px; margin-bottom: 4px; filter: drop-shadow(0 2px 8px rgba(0,0,0,0.5)); transition: transform 0.3s; }
-    .animal-card:hover .card-emoji { transform: scale(1.2); }
-    .animal-card .card-name { font-family: 'Permanent Marker', cursive; font-size: 9px; color: rgba(255,255,255,0.85); text-align: center; line-height: 1.2; }
-    .animal-card.selected {
-      border-color: var(--neon-teal);
-      box-shadow: 0 0 20px var(--card-glow, rgba(0,255,209,0.4)), 0 0 40px var(--card-glow, rgba(0,255,209,0.2)), inset 0 0 15px rgba(255,255,255,0.1);
-      transform: scale(1.1) translateY(-6px);
-    }
-    .animal-card.selected::after {
-      content: ''; position: absolute; inset: -3px; border-radius: 16px;
-      border: 2px solid var(--card-glow, var(--neon-teal));
-      animation: cardRingPulse 2s ease-in-out infinite; pointer-events: none;
-    }
-    @keyframes cardRingPulse { 0%, 100% { opacity: 0.4; transform: scale(1); } 50% { opacity: 1; transform: scale(1.04); } }
-
-    /* ============ FUNKY NAME INPUT ============ */
-    .funky-input-wrap { position: relative; margin-bottom: 24px; }
-    .funky-input {
-      width: 100%; padding: 14px 18px; border: none;
-      border-bottom: 3px solid rgba(255,255,255,0.15); border-radius: 0;
-      font-family: 'Permanent Marker', cursive; font-size: 22px;
-      color: white; background: transparent; outline: none; text-align: center; letter-spacing: 2px; transition: all 0.3s;
-    }
-    .funky-input::placeholder { color: rgba(255,255,255,0.2); font-family: 'Poppins', sans-serif; font-size: 14px; letter-spacing: 0; }
-    .funky-input:focus { border-bottom-color: var(--neon-teal); }
-    .funky-input-glow {
-      position: absolute; bottom: 0; left: 50%; width: 0; height: 3px;
-      background: linear-gradient(90deg, var(--neon-teal), var(--neon-pink));
-      transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-      transform: translateX(-50%); border-radius: 2px;
-      box-shadow: 0 0 15px var(--neon-teal), 0 0 30px rgba(0,255,209,0.3);
-    }
-    .funky-input:focus ~ .funky-input-glow { width: 100%; }
-
-    /* ============ GRADIENT COLOR ORBS ============ */
-    .color-orbs { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin: 12px 0 24px; }
-    .color-orb {
-      width: 44px; height: 44px; border-radius: 50%;
-      cursor: pointer; transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-      border: 3px solid rgba(255,255,255,0.15); position: relative;
-      box-shadow: inset 0 -4px 8px rgba(0,0,0,0.3), inset 0 4px 8px rgba(255,255,255,0.15);
-    }
-    .color-orb:hover { transform: scale(1.25); border-color: rgba(255,255,255,0.4); }
-    .color-orb.selected {
-      transform: scale(1.3); border-color: white;
-      box-shadow: 0 0 0 4px var(--dark), 0 0 0 6px currentColor, 0 0 25px currentColor, inset 0 -4px 8px rgba(0,0,0,0.3), inset 0 4px 8px rgba(255,255,255,0.15);
-      animation: orbPulse 2s ease-in-out infinite;
-    }
-    @keyframes orbPulse {
-      0%, 100% { box-shadow: 0 0 0 4px var(--dark), 0 0 0 6px currentColor, 0 0 25px currentColor, inset 0 -4px 8px rgba(0,0,0,0.3), inset 0 4px 8px rgba(255,255,255,0.15); }
-      50% { box-shadow: 0 0 0 4px var(--dark), 0 0 0 6px currentColor, 0 0 40px currentColor, inset 0 -4px 8px rgba(0,0,0,0.3), inset 0 4px 8px rgba(255,255,255,0.15); }
-    }
-
-    /* ============ BREATHING CTA ============ */
-    .btn-breathe {
-      background: linear-gradient(135deg, #00D4AA, var(--teal), var(--teal-dark));
-      color: white; font-family: 'Bangers', cursive; font-size: 22px; letter-spacing: 4px;
-      padding: 18px 32px; border-radius: 50px; border: none; cursor: pointer; width: 100%;
-      position: relative; overflow: visible;
-      box-shadow: 0 6px 30px rgba(0,255,209,0.3);
-      animation: breathe 3s ease-in-out infinite; transition: transform 0.2s;
-      text-shadow: 0 1px 2px rgba(0,0,0,0.3);
-    }
-    .btn-breathe:hover { transform: scale(1.05); }
-    .btn-breathe:active { transform: scale(0.95) !important; }
-    .btn-breathe:disabled { opacity: 0.3; cursor: not-allowed; animation: none; }
-    @keyframes breathe {
-      0%, 100% { box-shadow: 0 6px 30px rgba(0,255,209,0.3), 0 0 0 0 rgba(0,255,209,0); }
-      50% { box-shadow: 0 8px 40px rgba(0,255,209,0.5), 0 0 0 10px rgba(0,255,209,0.08); }
-    }
-    .btn-breathe::after {
-      content: ''; position: absolute; inset: -2px; border-radius: 50px;
-      background: linear-gradient(90deg, var(--neon-teal), var(--neon-pink), var(--neon-gold), var(--neon-teal));
-      background-size: 300% 100%; z-index: -1;
-      animation: borderShift 4s linear infinite; filter: blur(6px); opacity: 0.4;
-    }
-    @keyframes borderShift { to { background-position: 300% 0; } }
-
-    .welcome-section { opacity: 0; }
-    @keyframes sectionReveal {
-      from { opacity: 0; transform: translateY(30px); filter: blur(6px); }
-      to { opacity: 1; transform: translateY(0); filter: blur(0); }
-    }
-
-    @media (max-width: 400px) {
-      .funky-logo { font-size: 24px; }
-      .splash-letter { font-size: 36px; }
-      .animal-card .card-emoji { font-size: 26px; }
-      .animal-card .card-name { font-size: 8px; }
-      .animal-grid { gap: 8px; }
-      .color-orb { width: 38px; height: 38px; }
-    }
-
-    /* ============ UPGRADE: CINEMATIC LOBBY ============ */
-    .lobby-glass { background: rgba(12,12,30,0.7); backdrop-filter: blur(24px) saturate(1.5); -webkit-backdrop-filter: blur(24px) saturate(1.5); border-radius: var(--radius); padding: 28px 24px; border: 1px solid rgba(0,255,209,0.12); box-shadow: 0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05), var(--shadow-neon); }
-    .lobby-header { font-family: 'Bangers', cursive; font-size: 22px; letter-spacing: 3px; color: var(--neon-teal); text-align: center; text-shadow: 0 0 10px rgba(0,255,209,0.3); margin-bottom: 16px; }
-    .room-code-cinematic { text-align: center; padding: 24px; background: linear-gradient(135deg, rgba(0,255,209,0.12), rgba(255,45,123,0.08)); border-radius: var(--radius); margin-bottom: 20px; border: 1px solid rgba(0,255,209,0.2); position: relative; overflow: hidden; }
-    .room-code-cinematic::before { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(0,255,209,0.05), transparent); animation: codeShimmer 3s ease-in-out infinite; }
-    @keyframes codeShimmer { 0%,100% { transform: translateX(-100%); } 50% { transform: translateX(100%); } }
-    .room-code-cinematic .code-label { font-family: 'Bangers', cursive; font-size: 14px; color: rgba(255,255,255,0.6); letter-spacing: 4px; }
-    .room-code-cinematic .code-num { font-family: 'Bungee Shade', cursive; font-size: 44px; color: var(--neon-teal); letter-spacing: 12px; text-shadow: 0 0 30px rgba(0,255,209,0.5), 0 0 60px rgba(0,255,209,0.2); position: relative; z-index: 1; }
-    .room-code-cinematic .code-hint { font-size: 12px; color: rgba(255,255,255,0.4); margin-top: 4px; position: relative; z-index: 1; }
-    .share-row { display: flex; gap: 8px; margin-top: 12px; justify-content: center; position: relative; z-index: 1; }
-    .share-btn { padding: 8px 16px; border-radius: 50px; border: 1px solid rgba(0,255,209,0.3); background: rgba(0,255,209,0.08); color: var(--neon-teal); font-family: 'Bangers', cursive; font-size: 14px; letter-spacing: 2px; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; gap: 6px; }
-    .share-btn:hover { background: rgba(0,255,209,0.15); transform: scale(1.05); }
-    .qr-modal { position: fixed; inset: 0; z-index: 3000; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
-    .qr-modal.show { opacity: 1; pointer-events: all; }
-    .qr-card { background: var(--dark-mid); border-radius: var(--radius); padding: 32px; text-align: center; border: 1px solid rgba(0,255,209,0.2); box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
-    .qr-card canvas { border-radius: 12px; margin: 16px 0; }
-    .wind-compass { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 40px; height: 40px; }
-    .wind-compass::before { content: ''; position: absolute; inset: -8px; border: 1px solid rgba(255,215,0,0.2); border-radius: 50%; animation: compassSpin 20s linear infinite; }
-    @keyframes compassSpin { to { transform: rotate(360deg); } }
-
-    /* Seat upgrade */
-    .seat-cinematic { position: absolute; width: 68px; height: 68px; border-radius: 50%; background: rgba(255,255,255,0.06); border: 2px solid rgba(255,255,255,0.15); display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); z-index: 2; backdrop-filter: blur(8px); }
-    .seat-cinematic .seat-wind { font-family: 'Bungee Shade', cursive; font-size: 18px; color: rgba(255,255,255,0.4); }
-    .seat-cinematic .seat-label { font-family: 'Bangers', cursive; font-size: 10px; color: rgba(255,255,255,0.3); letter-spacing: 2px; }
-    .seat-cinematic:hover { transform: scale(1.15) !important; background: rgba(0,255,209,0.1); border-color: rgba(0,255,209,0.4); }
-    .seat-cinematic.taken { background: linear-gradient(135deg, rgba(212,80,139,0.3), rgba(212,80,139,0.15)); border: 2px solid var(--neon-pink); }
-    .seat-cinematic.mine { background: linear-gradient(135deg, rgba(0,255,209,0.3), rgba(0,255,209,0.15)); border: 2px solid var(--neon-teal); box-shadow: 0 0 20px rgba(0,255,209,0.3); animation: seatPulse 2s ease-in-out infinite; }
-    .seat-cinematic.taken .seat-wind, .seat-cinematic.mine .seat-wind { color: white; }
-    .seat-cinematic.taken .seat-label, .seat-cinematic.mine .seat-label { color: rgba(255,255,255,0.8); }
-    .lobby-player-card { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: rgba(255,255,255,0.04); border-radius: var(--radius-sm); border: 1px solid rgba(255,255,255,0.06); animation: playerSlideIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; transition: all 0.3s; }
-    .lobby-player-card:hover { background: rgba(255,255,255,0.08); border-color: rgba(0,255,209,0.15); }
-    @keyframes playerSlideIn { from { opacity: 0; transform: translateX(-20px) scale(0.95); } to { opacity: 1; transform: translateX(0) scale(1); } }
-    .lobby-player-card .lp-avatar { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
-    .lobby-player-card .lp-name { font-family: 'Permanent Marker', cursive; font-size: 15px; color: white; flex: 1; }
-    .lobby-player-card .lp-seat { font-family: 'Bangers', cursive; font-size: 12px; letter-spacing: 2px; color: var(--neon-teal); background: rgba(0,255,209,0.1); padding: 4px 12px; border-radius: 20px; border: 1px solid rgba(0,255,209,0.2); }
-    .lobby-player-card.is-host .lp-name::after { content: ' HOST'; font-family: 'Bangers', cursive; font-size: 10px; color: var(--neon-gold); background: rgba(255,215,0,0.1); padding: 2px 8px; border-radius: 8px; margin-left: 6px; letter-spacing: 2px; }
-
-    /* ============ UPGRADE: CINEMATIC SETTINGS ============ */
-    .settings-glass { background: rgba(12,12,30,0.7); backdrop-filter: blur(24px) saturate(1.5); -webkit-backdrop-filter: blur(24px) saturate(1.5); border-radius: var(--radius); padding: 28px 24px; border: 1px solid rgba(0,255,209,0.12); box-shadow: 0 8px 32px rgba(0,0,0,0.4), var(--shadow-neon); }
-    .round-counter { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 20px; }
-    .round-num { font-family: 'Bungee Shade', cursive; font-size: 48px; color: var(--neon-teal); text-shadow: 0 0 20px rgba(0,255,209,0.4); display: inline-block; transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
-    .round-label-text { font-family: 'Bangers', cursive; font-size: 18px; color: rgba(255,255,255,0.5); letter-spacing: 3px; }
-    .setting-card { background: rgba(255,255,255,0.04); border-radius: var(--radius-sm); padding: 14px; border: 1px solid rgba(255,255,255,0.06); }
-    .setting-card label { font-family: 'Bangers', cursive; font-size: 13px; color: var(--neon-teal); letter-spacing: 2px; display: block; margin-bottom: 6px; }
-    .select-cinematic { width: 100%; padding: 12px 16px; border: 2px solid rgba(255,255,255,0.08); border-radius: var(--radius-sm); font-family: 'Permanent Marker', cursive; font-size: 16px; color: white; background: rgba(255,255,255,0.04); cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2300FFD1' stroke-width='2' fill='none'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; transition: all 0.3s; outline: none; }
-    .select-cinematic:focus { border-color: var(--neon-teal); box-shadow: 0 0 0 3px rgba(0,255,209,0.1); }
-    .select-cinematic option { background: #1A1A2E; color: white; font-family: 'Poppins', sans-serif; }
-    .chip-cinematic { display: flex; align-items: center; gap: 6px; padding: 10px 16px; border-radius: 50px; font-family: 'Bangers', cursive; font-size: 14px; letter-spacing: 1px; cursor: pointer; border: 2px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.04); color: rgba(255,255,255,0.5); transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); user-select: none; }
-    .chip-cinematic:hover { border-color: rgba(0,255,209,0.3); background: rgba(0,255,209,0.05); }
-    .chip-cinematic:active { transform: scale(0.92); }
-    .chip-cinematic.active { border-color: var(--neon-teal); background: rgba(0,255,209,0.1); color: var(--neon-teal); transform: scale(1.05); box-shadow: 0 0 15px rgba(0,255,209,0.2); }
-    .chip-cinematic input { display: none; }
-
-    /* ============ UPGRADE: CINEMATIC RESULTS ============ */
-    .results-glass { background: rgba(12,12,30,0.7); backdrop-filter: blur(24px) saturate(1.5); -webkit-backdrop-filter: blur(24px) saturate(1.5); border-radius: var(--radius); padding: 28px 24px; border: 1px solid rgba(0,255,209,0.12); box-shadow: 0 8px 32px rgba(0,0,0,0.4), var(--shadow-neon); }
-    .winner-crown { font-size: 48px; display: block; text-align: center; animation: crownFloat 2s ease-in-out infinite alternate; filter: drop-shadow(0 4px 12px rgba(255,215,0,0.4)); }
-    @keyframes crownFloat { from { transform: translateY(0) rotate(-3deg); } to { transform: translateY(-8px) rotate(3deg); } }
-    .winner-name-big { font-family: 'Bungee Shade', cursive; font-size: 28px; color: var(--neon-gold); text-align: center; text-shadow: 0 0 20px rgba(255,215,0,0.4); margin: 8px 0 4px; }
-    .winner-score-big { font-family: 'Bangers', cursive; font-size: 20px; color: var(--neon-teal); text-align: center; letter-spacing: 3px; }
-    .sb-player-cinematic { display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: rgba(255,255,255,0.04); border-radius: var(--radius-sm); margin-bottom: 8px; border: 1px solid rgba(255,255,255,0.06); animation: rankReveal 0.6s cubic-bezier(0.16, 1, 0.3, 1) both; }
-    @keyframes rankReveal { from { opacity: 0; transform: translateX(40px) scale(0.9); } to { opacity: 1; transform: translateX(0) scale(1); } }
-    .sb-player-cinematic.winner { background: linear-gradient(135deg, rgba(0,255,209,0.1), rgba(255,215,0,0.08)); border-color: rgba(0,255,209,0.2); }
-    .sb-player-cinematic .sb-rank { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Bangers', cursive; font-size: 16px; background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); }
-    .sb-player-cinematic.winner .sb-rank { background: linear-gradient(135deg, var(--neon-teal), #00D4AA); color: white; }
-    .sb-player-cinematic .sb-name { font-family: 'Permanent Marker', cursive; font-size: 14px; color: white; }
-    .sb-player-cinematic .sb-score { font-family: 'Bungee Shade', cursive; font-size: 18px; color: var(--neon-teal); }
-
-    /* Canvas confetti for fireworks effect */
-    #confettiCanvas { position: fixed; inset: 0; pointer-events: none; z-index: 999; }
-
-    /* ============ UPGRADE: SOUND MUTE TOGGLE ============ */
-    .mute-btn { position: fixed; top: 12px; right: 12px; z-index: 100; width: 40px; height: 40px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.15); background: rgba(12,12,30,0.7); backdrop-filter: blur(12px); color: var(--neon-teal); font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.3s; }
-    .mute-btn:hover { background: rgba(0,255,209,0.1); border-color: rgba(0,255,209,0.3); transform: scale(1.1); }
-    .mute-btn.muted { color: rgba(255,255,255,0.3); }
-
-    /* ============ UPGRADE: EMOTES ============ */
-    .emote-bar { position: fixed; bottom: 16px; right: 16px; z-index: 100; display: flex; gap: 6px; background: rgba(12,12,30,0.8); backdrop-filter: blur(12px); padding: 8px 12px; border-radius: 50px; border: 1px solid rgba(255,255,255,0.1); opacity: 0; pointer-events: none; transition: all 0.3s; }
-    .emote-bar.visible { opacity: 1; pointer-events: all; }
-    .emote-btn { width: 36px; height: 36px; border-radius: 50%; border: none; background: rgba(255,255,255,0.06); font-size: 18px; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; justify-content: center; }
-    .emote-btn:hover { transform: scale(1.3); background: rgba(255,255,255,0.12); }
-    .emote-btn:active { transform: scale(0.9); }
-    .floating-emote { position: fixed; z-index: 998; font-size: 32px; pointer-events: none; animation: emoteFloat 2s ease-out forwards; }
-    @keyframes emoteFloat {
-      0% { opacity: 1; transform: translateY(0) scale(0.5) rotate(-10deg); }
-      30% { transform: translateY(-40px) scale(1.3) rotate(5deg); }
-      100% { opacity: 0; transform: translateY(-180px) scale(0.8) rotate(15deg); }
-    }
-
-    /* ============ UPGRADE: LOADING STATES ============ */
-    .skeleton { background: linear-gradient(90deg, rgba(255,255,255,0.04), rgba(255,255,255,0.08), rgba(255,255,255,0.04)); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 8px; }
-    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
-    .conn-bar-v2 { position: fixed; top: 0; left: 0; right: 0; padding: 6px 16px; font-family: 'Bangers', cursive; font-size: 13px; letter-spacing: 2px; z-index: 2001; text-align: center; transition: all 0.4s; display: flex; align-items: center; justify-content: center; gap: 8px; }
-    .conn-bar-v2.connected { background: linear-gradient(135deg, rgba(0,255,209,0.9), rgba(0,212,170,0.9)); color: white; }
-    .conn-bar-v2.disconnected { background: linear-gradient(135deg, rgba(239,68,68,0.95), rgba(185,28,28,0.95)); color: white; }
-    .conn-bar-v2.reconnecting { background: linear-gradient(135deg, rgba(245,158,11,0.95), rgba(217,119,6,0.95)); color: white; }
-    .retry-btn { padding: 4px 12px; border-radius: 50px; border: 1px solid rgba(255,255,255,0.4); background: rgba(255,255,255,0.15); color: white; font-family: 'Bangers', cursive; font-size: 12px; cursor: pointer; margin-left: 8px; }
-
-    /* ============ UPGRADE: STATS ============ */
-    .stats-bar { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin: 12px 0; }
-    .stat-chip { padding: 6px 12px; border-radius: 50px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); font-family: 'Bangers', cursive; font-size: 12px; color: rgba(255,255,255,0.6); letter-spacing: 1px; display: flex; align-items: center; gap: 6px; }
-    .stat-chip .stat-val { color: var(--neon-teal); font-size: 14px; }
-
   </style>
 </head>
 <body>
 
-  <!-- CONNECTION BAR -->
-  <div class="conn-bar-v2 disconnected" id="connBar"><span class="conn-dot red"></span> CONNECTING...</div>
+  <!-- Background -->
+  <div id="bgPattern"></div>
 
-  <!-- MUTE BUTTON -->
-  <button class="mute-btn" id="muteBtn" onclick="toggleMute()" title="Toggle sound">&#128266;</button>
-
-  <!-- BG -->
-  <div class="bg-pattern" id="bgPattern"></div>
-
-  <!-- TOAST -->
+  <!-- Toast -->
   <div class="toast" id="toast"></div>
 
-  <!-- SPLASH OVERLAY -->
-  <div id="splashOverlay" onclick="skipSplash()">
-    <div class="splash-title">
-      <div class="splash-word lets">
-        <span class="splash-letter" style="--i:0">L</span>
-        <span class="splash-letter" style="--i:1">E</span>
-        <span class="splash-letter" style="--i:2">T</span>
-        <span class="splash-letter" style="--i:3">S</span>
-      </div>
-      <div class="splash-word mahjong">
-        <span class="splash-letter" style="--i:0">M</span>
-        <span class="splash-letter" style="--i:1">A</span>
-        <span class="splash-letter" style="--i:2">H</span>
-        <span class="splash-letter" style="--i:3">J</span>
-        <span class="splash-letter" style="--i:4">O</span>
-        <span class="splash-letter" style="--i:5">N</span>
-        <span class="splash-letter" style="--i:6">G</span>
-      </div>
-    </div>
-    <div class="splash-sub">PLAY TOGETHER &#8226; SCORE INSTANTLY</div>
-    <div class="splash-skip">TAP ANYWHERE TO SKIP</div>
-  </div>
-  <script>
-  var splashDone = false;
-  function skipSplash() {
-    if (splashDone) return;
-    splashDone = true;
-    var overlay = document.getElementById('splashOverlay');
-    if (!overlay) return;
-    var sw = document.createElement('div');
-    sw.className = 'splash-shockwave';
-    overlay.appendChild(sw);
-    setTimeout(function() {
-      overlay.classList.add('exit');
-      setTimeout(function() {
-        overlay.remove();
-        revealWelcome();
-      }, 800);
-    }, 200);
-  }
-  function revealWelcome() {
-    var logo = document.querySelector('.funky-logo');
-    var sub = document.querySelector('.funky-sub');
-    var sections = document.querySelectorAll('.welcome-section');
-    if (logo) logo.style.animation = 'logoReveal 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards';
-    setTimeout(function() {
-      if (sub) sub.style.animation = 'logoReveal 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards';
-    }, 200);
-    sections.forEach(function(s, i) {
-      setTimeout(function() {
-        s.style.animation = 'sectionReveal 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards';
-      }, 400 + i * 200);
-    });
-  }
-  setTimeout(function() { skipSplash(); }, 3500);
-  </script>
+  <!-- Mute -->
+  <button class="mute-btn" id="muteBtn" onclick="toggleMute()">&#128266;</button>
 
-  <!-- ========== SCREEN 1: WELCOME ========== -->
-  <div class="screen active" id="screenWelcome">
-    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;max-width:420px;padding:10px 0;">
-      <div class="funky-logo"><span class="lets">LETS</span> <span class="mj">MAHJONG</span></div>
-      <div class="funky-sub">PLAY TOGETHER &#8226; SCORE INSTANTLY</div>
-      <div class="glass-card">
-        <div class="welcome-section">
-          <div class="section-funky">✨ CHOOSE YOUR SPIRIT ✨</div>
-          <div class="animal-grid" id="animalGrid"></div>
+  <!-- ========== SCREEN 1: SETTINGS ========== -->
+  <div class="screen active" id="screenSettings">
+    <div class="container">
+      <div class="logo">
+        <div class="logo-text">LETS MAHJONG</div>
+        <div class="logo-sub">SCORE CALCULATOR</div>
+      </div>
+
+      <div class="glass">
+        <div class="setting-group">
+          <div class="setting-label">GAME MODE</div>
+          <select class="sel" id="setGameMode">
+            <option value="east_round">East Round</option>
+            <option value="full_game">Full Game</option>
+            <option value="goulash">Goulash</option>
+          </select>
         </div>
-        <div class="welcome-section">
-          <div class="section-funky">✍ YOUR NAME</div>
-          <div class="funky-input-wrap">
-            <input class="funky-input" id="playerName" type="text" placeholder="Type your name..." maxlength="20" autocomplete="off">
-            <div class="funky-input-glow"></div>
+
+        <div class="setting-group">
+          <div class="setting-label">ROUND WIND</div>
+          <div class="wind-row" id="roundWindRow">
+            <button class="wind-btn" data-wind="east" onclick="pickWind('round', 'east', this)">EAST</button>
+            <button class="wind-btn" data-wind="south" onclick="pickWind('round', 'south', this)">SOUTH</button>
+            <button class="wind-btn active" data-wind="west" onclick="pickWind('round', 'west', this)">WEST</button>
+            <button class="wind-btn" data-wind="north" onclick="pickWind('round', 'north', this)">NORTH</button>
           </div>
         </div>
-        <div class="welcome-section">
-          <div class="section-funky">🌈 YOUR VIBE</div>
-          <div class="color-orbs" id="colorOrbs"></div>
+
+        <div class="setting-group">
+          <div class="setting-label">YOUR SEAT</div>
+          <div class="wind-row" id="seatWindRow">
+            <button class="wind-btn active" data-wind="east" onclick="pickWind('seat', 'east', this)">EAST</button>
+            <button class="wind-btn" data-wind="south" onclick="pickWind('seat', 'south', this)">SOUTH</button>
+            <button class="wind-btn" data-wind="west" onclick="pickWind('seat', 'west', this)">WEST</button>
+            <button class="wind-btn" data-wind="north" onclick="pickWind('seat', 'north', this)">NORTH</button>
+          </div>
         </div>
-        <div class="welcome-section">
-          <button class="btn-breathe" id="btnContinue" disabled>LET'S PLAY ➡</button>
+
+        <div class="setting-group">
+          <div class="setting-label">SCORING OPTIONS</div>
+          <div class="toggle-row">
+            <div class="toggle-chip active" id="togMahjong" onclick="toggleChip(this)">Mahjong</div>
+            <div class="toggle-chip" id="togConcealed" onclick="toggleChip(this)">Concealed</div>
+            <div class="toggle-chip" id="togLastTile" onclick="toggleChip(this)">Last Tile</div>
+            <div class="toggle-chip" id="togCleanSweep" onclick="toggleChip(this)">Clean Sweep</div>
+          </div>
         </div>
+
+        <button class="btn-scan" onclick="goToScan()">&#128247; SCAN MY HAND</button>
       </div>
     </div>
   </div>
 
-  <!-- Inline script: wire up animal/color clicks immediately -->
-  <script>
-  (function() {
-    var ANIMAL_DATA = [
-      { emoji: '🐉', name: 'Azure Dragon', grad: 'linear-gradient(135deg, #0D47A1, #00BCD4)', glow: 'rgba(0,188,212,0.5)' },
-      { emoji: '🦊', name: 'Fire Fox', grad: 'linear-gradient(135deg, #BF360C, #FF6D00)', glow: 'rgba(255,109,0,0.5)' },
-      { emoji: '🐅', name: 'Thunder Tiger', grad: 'linear-gradient(135deg, #F57F17, #FFD600)', glow: 'rgba(255,214,0,0.5)' },
-      { emoji: '🐼', name: 'Bamboo Panda', grad: 'linear-gradient(135deg, #1B5E20, #66BB6A)', glow: 'rgba(102,187,106,0.5)' },
-      { emoji: '🦅', name: 'Storm Eagle', grad: 'linear-gradient(135deg, #4A148C, #7C4DFF)', glow: 'rgba(124,77,255,0.5)' },
-      { emoji: '🐺', name: 'Shadow Wolf', grad: 'linear-gradient(135deg, #263238, #78909C)', glow: 'rgba(120,144,156,0.5)' },
-      { emoji: '🦁', name: 'Golden Lion', grad: 'linear-gradient(135deg, #E65100, #FFB300)', glow: 'rgba(255,179,0,0.5)' },
-      { emoji: '🐍', name: 'Jade Serpent', grad: 'linear-gradient(135deg, #004D40, #00E676)', glow: 'rgba(0,230,118,0.5)' }
-    ];
-    var FUNKY_ORBS = [
-      { hex: '#FF1493', grad: 'radial-gradient(circle at 30% 30%, #FF69B4, #FF1493, #C2185B)' },
-      { hex: '#00E5FF', grad: 'radial-gradient(circle at 30% 30%, #80DEEA, #00E5FF, #00838F)' },
-      { hex: '#76FF03', grad: 'radial-gradient(circle at 30% 30%, #B2FF59, #76FF03, #33691E)' },
-      { hex: '#FF6D00', grad: 'radial-gradient(circle at 30% 30%, #FFAB40, #FF6D00, #BF360C)' },
-      { hex: '#7C4DFF', grad: 'radial-gradient(circle at 30% 30%, #B388FF, #7C4DFF, #311B92)' },
-      { hex: '#FF1744', grad: 'radial-gradient(circle at 30% 30%, #FF5252, #FF1744, #B71C1C)' },
-      { hex: '#FFD600', grad: 'radial-gradient(circle at 30% 30%, #FFFF00, #FFD600, #F57F17)' },
-      { hex: '#00B0FF', grad: 'radial-gradient(circle at 30% 30%, #81D4FA, #00B0FF, #01579B)' }
-    ];
-    var grid = document.getElementById('animalGrid');
-    ANIMAL_DATA.forEach(function(a, i) {
-      var card = document.createElement('div');
-      card.className = 'animal-card' + (i === 0 ? ' selected' : '');
-      card.setAttribute('data-avatar', i);
-      card.style.setProperty('--card-glow', a.glow);
-      card.style.background = a.grad;
-      card.innerHTML = '<div class="card-emoji">' + a.emoji + '</div><div class="card-name">' + a.name + '</div>';
-      grid.appendChild(card);
-    });
-    var orbs = document.getElementById('colorOrbs');
-    FUNKY_ORBS.forEach(function(c, i) {
-      var orb = document.createElement('div');
-      orb.className = 'color-orb' + (i === 0 ? ' selected' : '');
-      orb.setAttribute('data-color', i);
-      orb.style.background = c.grad;
-      orb.style.color = c.hex;
-      orbs.appendChild(orb);
-    });
-    grid.addEventListener('click', function(e) {
-      var card = e.target.closest('.animal-card');
-      if (!card) return;
-      grid.querySelectorAll('.animal-card').forEach(function(c) { c.classList.remove('selected'); });
-      card.classList.add('selected');
-      if (typeof myPlayer !== 'undefined' && typeof AVATARS !== 'undefined') {
-        var idx = parseInt(card.getAttribute('data-avatar'));
-        myPlayer.avatar = AVATARS[idx] || card.querySelector('.card-emoji').textContent;
-      }
-    });
-    orbs.addEventListener('click', function(e) {
-      var orb = e.target.closest('.color-orb');
-      if (!orb) return;
-      orbs.querySelectorAll('.color-orb').forEach(function(o) { o.classList.remove('selected'); });
-      orb.classList.add('selected');
-      if (typeof myPlayer !== 'undefined' && typeof COLORS !== 'undefined') {
-        var idx = parseInt(orb.getAttribute('data-color'));
-        myPlayer.color = COLORS[idx];
-      }
-    });
-    var nameInput = document.getElementById('playerName');
-    var btnContinue = document.getElementById('btnContinue');
-    if (nameInput && btnContinue) {
-      nameInput.addEventListener('input', function() {
-        btnContinue.disabled = nameInput.value.trim().length < 1;
-      });
-    }
-  })();
-  </script>
-
-    <!-- ========== SCREEN 2: CREATE/JOIN ========== -->
-  <div class="screen" id="screenRoom">
-    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;max-width:420px;">
-      <div class="logo-text" style="font-size:28px;"><span class="lets">LETS</span> <span class="mj">MAHJONG</span></div>
-      <div class="spacer"></div>
-      <div class="glass-card text-center">
-        <p class="fw-700 fs-14" style="color:white;">Welcome, <span id="displayName" style="color:var(--neon-teal);">Player</span>!</p>
-        <div class="spacer"></div>
-        <button class="btn btn-teal" id="btnCreate">&#127968; Create Game Room</button>
-        <div class="spacer-sm"></div>
-        <button class="btn btn-outline" id="btnShowJoin">&#128279; Join a Room</button>
-        <div id="joinSection" style="display:none;margin-top:16px;">
-          <div class="divider"></div>
-          <div class="section-label">Enter room code</div>
-          <input class="input-field" id="joinCode" type="text" placeholder="e.g. 7284" maxlength="4" style="text-align:center;font-size:28px;letter-spacing:8px;font-weight:900;">
-          <div class="spacer-sm"></div>
-          <button class="btn btn-pink btn-sm" style="width:100%;" id="btnJoin">Join &#10145;</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ========== SCREEN 3: LOBBY ========== -->
-  <div class="screen" id="screenLobby">
-    <div style="width:100%;max-width:420px;">
-      <div class="lobby-header">&#127136; GAME LOBBY</div>
-      <div class="room-code-cinematic">
-        <div class="code-label">ROOM CODE</div>
-        <div class="code-num" id="lobbyRoomCode">&mdash;</div>
-        <div class="code-hint">Share this with other players</div>
-        <div class="share-row">
-          <button class="share-btn" onclick="shareRoom()">&#128279; SHARE</button>
-          <button class="share-btn" onclick="showQR()">&#9638; QR CODE</button>
-        </div>
-      </div>
-      <div class="lobby-glass">
-        <div class="lobby-header" style="font-size:16px;">&#127744; PICK YOUR SEAT</div>
-        <div class="table-container" id="tableContainer">
-          <div class="mj-table"><div class="table-label">TABLE</div><div class="wind-compass"></div></div>
-          <div class="seat seat-cinematic pos-east" onclick="pickSeat('east')"><span class="seat-wind">E</span><span class="seat-label">EAST</span></div>
-          <div class="seat seat-cinematic pos-south" onclick="pickSeat('south')"><span class="seat-wind">S</span><span class="seat-label">SOUTH</span></div>
-          <div class="seat seat-cinematic pos-west" onclick="pickSeat('west')"><span class="seat-wind">W</span><span class="seat-label">WEST</span></div>
-          <div class="seat seat-cinematic pos-north" onclick="pickSeat('north')"><span class="seat-wind">N</span><span class="seat-label">NORTH</span></div>
-        </div>
-        <div class="lobby-header" style="font-size:16px;">&#128101; PLAYERS</div>
-        <div class="lobby-players" id="lobbyPlayers"></div>
-        <div class="spacer"></div>
-        <button class="btn btn-teal" id="btnStartGame" disabled>&#9889; START GAME</button>
-        <p id="hostOnlyMsg" style="text-align:center;font-size:11px;color:var(--gray);margin-top:8px;display:none;">Only the host can start the game</p>
-      </div>
-    </div>
-  </div>
-
-  <!-- QR Modal -->
-  <div class="qr-modal" id="qrModal" onclick="this.classList.remove('show')">
-    <div class="qr-card" onclick="event.stopPropagation()">
-      <div style="font-family:'Bangers',cursive;font-size:20px;color:var(--neon-teal);letter-spacing:3px;">SCAN TO JOIN</div>
-      <canvas id="qrCanvas" width="200" height="200"></canvas>
-      <div style="font-family:'Bungee Shade',cursive;font-size:24px;color:var(--neon-teal);" id="qrCode"></div>
-      <button class="btn btn-outline btn-sm" style="margin-top:12px;" onclick="document.getElementById('qrModal').classList.remove('show')">CLOSE</button>
-    </div>
-  </div>
-
-  <!-- ========== SCREEN 4: SETTINGS ========== -->
-  <div class="screen" id="screenSettings">
-    <div style="width:100%;max-width:420px;">
-      <div class="settings-glass">
-        <div class="round-counter">
-          <span class="round-label-text">ROUND</span>
-          <span class="round-num" id="settingsRound">1</span>
-        </div>
-        <p class="text-center" style="color:rgba(255,255,255,0.4);font-family:'Bangers',cursive;font-size:14px;letter-spacing:2px;" id="settingsHostMsg">HOST IS CONFIGURING...</p>
-        <div class="spacer"></div>
-        <div class="settings-row">
-          <div class="setting-card"><label>GAME MODE</label><select class="select-cinematic" id="setGameMode"><option value="east_round">East Round</option><option value="goulash">Goulash</option></select></div>
-          <div class="setting-card"><label>ROUND WIND</label><select class="select-cinematic" id="setRoundWind"><option value="east">East</option><option value="south">South</option><option value="west" selected>West</option><option value="north">North</option></select></div>
-        </div>
-        <div class="spacer-sm"></div>
-        <div class="lobby-header" style="font-size:14px;">&#9881; OPTIONS</div>
-        <div class="checkbox-chips">
-          <label class="chip-cinematic active" onclick="toggleChipV2(this)"><input type="checkbox" id="setMahjong" checked><span>&#127936; MAHJONG!</span></label>
-          <label class="chip-cinematic" onclick="toggleChipV2(this)"><input type="checkbox" id="setConcealed"><span>&#128064; CONCEALED</span></label>
-          <label class="chip-cinematic" onclick="toggleChipV2(this)"><input type="checkbox" id="setLastTile"><span>&#127922; LAST TILE</span></label>
-          <label class="chip-cinematic" onclick="toggleChipV2(this)"><input type="checkbox" id="setCleanSweep"><span>&#129529; CLEAN SWEEP</span></label>
-        </div>
-        <div class="spacer"></div>
-        <button class="btn btn-teal" id="btnGoScan">&#128247; SCAN HANDS &#10145;</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ========== SCREEN 5: CAMERA SCAN ========== -->
+  <!-- ========== SCREEN 2: SCAN ========== -->
   <div class="screen" id="screenScan">
-    <div style="width:100%;max-width:420px;text-align:center;">
-      <p class="text-white fw-700" style="font-size:20px;">&#128247; Scan Your Hand</p>
-      <p class="text-muted">Lay your tiles face-up and take a photo</p>
-      <div class="camera-zone" id="cameraZone">
-        <div class="cam-icon">&#128248;</div>
-        <div class="cam-text">Tap to open camera</div>
-        <div class="cam-hint">Take a photo of your tiles</div>
-        <input type="file" accept="image/*" capture="environment" id="cameraInput">
+    <div class="container">
+      <div class="logo">
+        <div class="logo-text" style="font-size:22px;">SCAN TILES</div>
       </div>
-      <div class="scan-status-row" id="scanStatusRow"></div>
-      <div id="scanResult" style="display:none;">
-        <div class="glass-card" style="margin-top:12px;">
-          <p class="fw-700 fs-14 mb-8" style="color:var(--teal);">&#9989; Tiles Detected</p>
-          <div id="detectedTiles" style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;"></div>
-          <div class="spacer"></div>
-          <p style="font-size:12px;color:var(--gray);">Confirm the tiles are correct</p>
-          <div class="spacer-sm"></div>
-          <button class="btn btn-teal btn-sm" style="width:100%;" id="btnConfirmScan">&#9989; Confirm & Score</button>
-          <div class="spacer-sm"></div>
-          <button class="btn btn-outline btn-sm" style="width:100%;" id="btnRetake">&#128247; Retake Photo</button>
+
+      <div class="glass">
+        <div class="camera-zone" id="cameraZone" onclick="openCamera()">
+          <input type="file" accept="image/*" capture="environment" id="cameraInput">
+          <div class="camera-prompt" id="cameraPrompt">
+            <div class="icon">&#128247;</div>
+            <p>Tap to take a photo of your tiles</p>
+          </div>
         </div>
-      </div>
-      <div id="scanWaiting" style="display:none;margin-top:20px;">
-        <div class="spinner"></div>
-        <p class="text-muted">Waiting for other players to scan...</p>
+
+        <div id="scanStatus" style="display:none;"></div>
+        <div class="tiles-grid" id="detectedTiles"></div>
+
+        <div class="btn-row" id="scanButtons" style="display:none;">
+          <button class="btn-pink" id="btnCalculate" onclick="calculateScore()">&#127942; CALCULATE</button>
+          <button class="btn-outline" onclick="retake()">&#128247; RETAKE</button>
+        </div>
+
+        <button class="btn-outline" onclick="showScreen('screenSettings')" style="margin-top:12px;">&#8592; BACK TO SETTINGS</button>
       </div>
     </div>
   </div>
 
-  <!-- ========== SCREEN 6: RESULTS ========== -->
+  <!-- ========== SCREEN 3: RESULTS ========== -->
   <div class="screen" id="screenResults">
-    <div style="width:100%;max-width:420px;text-align:center;">
-      <div class="results-glass">
-        <div class="winner-crown" id="winnerCrown">&#127942;</div>
-        <div class="winner-name-big" id="winnerName">&mdash;</div>
-        <div class="winner-score-big" id="winnerHand">&mdash;</div>
-        <div class="spacer"></div>
-        <div class="lobby-header" style="font-size:14px;">&#128202; ROUND SCORES</div>
-        <div class="scoreboard" id="scoreboard"></div>
-        <div class="spacer"></div>
-        <div style="display:flex;gap:10px;">
-          <button class="btn btn-teal" style="flex:1;" id="btnNextRound">NEXT ROUND &#10145;</button>
-          <button class="btn btn-ghost" style="flex:1;" id="btnEndGame">END GAME</button>
+    <div class="container">
+      <div class="glass">
+        <div class="score-display">
+          <div class="score-label">YOUR SCORE</div>
+          <div class="score-number" id="scoreNumber">0</div>
+          <div class="hand-name" id="handName"></div>
+          <div id="limitBadge" style="display:none;"></div>
         </div>
+
+        <div id="tilesPreview" class="tiles-grid" style="padding:8px 0 16px;"></div>
+
+        <div class="breakdown" id="breakdown"></div>
+
+        <div style="height:16px;"></div>
+        <button class="btn-scan" onclick="scanAgain()">&#128247; SCAN AGAIN</button>
+        <button class="btn-outline" onclick="showScreen('screenSettings')" style="margin-top:10px;">&#9881; CHANGE SETTINGS</button>
       </div>
     </div>
     <canvas id="confettiCanvas"></canvas>
   </div>
 
-  <!-- ========== SCREEN 7: FINAL ========== -->
-  <div class="screen" id="screenFinal">
-    <div style="width:100%;max-width:420px;text-align:center;">
-      <div class="results-glass">
-        <div class="winner-crown">&#127942;</div>
-        <div style="font-family:'Bungee Shade',cursive;font-size:22px;color:var(--neon-gold);margin:8px 0;">GAME OVER</div>
-        <div class="lobby-header" style="font-size:14px;">&#127941; FINAL STANDINGS</div>
-        <div class="scoreboard" id="finalScoreboard"></div>
-        <div class="stats-bar" id="statsBar"></div>
-        <div class="spacer"></div>
-        <button class="btn btn-pink" id="btnNewGame">&#127922; NEW GAME</button>
-      </div>
-    </div>
-    <canvas id="confettiCanvas2"></canvas>
-  </div>
-
   <!-- ========== JS ========== -->
   <script src="/mahjong-scorer.js"></script>
   <script>
-  const AVATARS = ['🐉','🦊','🐅','🐼','🦅','🐺','🦁','🐍'];
-  const COLORS = ['#FF1493','#00E5FF','#76FF03','#FF6D00','#7C4DFF','#FF1744','#FFD600','#00B0FF'];
-  const CHAR_MAP = { characters:['','一','二','三','四','五','六','七','八','九'], winds:{east:'東',south:'南',west:'西',north:'北'}, dragons:{green:'發',red:'中',white:'B'} };
+  var CHAR_MAP = { characters:['','一','二','三','四','五','六','七','八','九'], winds:{east:'東',south:'南',west:'西',north:'北'}, dragons:{green:'發',red:'中',white:'B'} };
 
-  // ============ SOUND SYSTEM (Web Audio API) ============
-  let audioCtx = null;
-  let soundMuted = false;
+  // ---- STATE ----
+  var settings = {
+    gameMode: 'east_round',
+    roundWind: 'west',
+    seatWind: 'east',
+    isMahjong: true,
+    isConcealed: false,
+    isLastTile: false,
+    isCleanSweep: false
+  };
+  var scannedTiles = null;
+
+  // ---- SOUND ----
+  var audioCtx = null;
+  var soundMuted = false;
   function getAudioCtx() {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     return audioCtx;
@@ -1104,774 +434,232 @@
       var ctx = getAudioCtx();
       var osc = ctx.createOscillator();
       var gain = ctx.createGain();
-      osc.type = type || 'sine';
-      osc.frequency.value = freq;
+      osc.type = type || 'sine'; osc.frequency.value = freq;
       gain.gain.value = vol || 0.15;
       gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start();
-      osc.stop(ctx.currentTime + dur);
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start(); osc.stop(ctx.currentTime + dur);
     } catch(e) {}
   }
   function sfx(name) {
     if (soundMuted) return;
     switch(name) {
       case 'click': playTone(800, 0.08, 'square', 0.06); break;
-      case 'join': playTone(523, 0.12, 'sine', 0.12); setTimeout(function(){playTone(659, 0.12, 'sine', 0.12);}, 100); setTimeout(function(){playTone(784, 0.15, 'sine', 0.12);}, 200); break;
       case 'scan': playTone(1200, 0.05, 'square', 0.08); setTimeout(function(){playTone(1600, 0.05, 'square', 0.08);}, 60); break;
-      case 'confirm': playTone(440, 0.1, 'sine', 0.1); setTimeout(function(){playTone(554, 0.1, 'sine', 0.1);}, 80); setTimeout(function(){playTone(659, 0.15, 'sine', 0.1);}, 160); break;
       case 'win': [523,659,784,1047].forEach(function(f,i){setTimeout(function(){playTone(f,0.2,'sine',0.12);},i*120);}); break;
-      case 'countdown': playTone(600, 0.08, 'square', 0.08); break;
       case 'error': playTone(200, 0.2, 'sawtooth', 0.08); break;
-      case 'emote': playTone(1000, 0.06, 'sine', 0.05); break;
-      case 'seat': playTone(660, 0.1, 'triangle', 0.1); setTimeout(function(){playTone(880, 0.12, 'triangle', 0.1);}, 80); break;
     }
   }
   function toggleMute() {
     soundMuted = !soundMuted;
     var btn = document.getElementById('muteBtn');
-    if (btn) {
-      btn.innerHTML = soundMuted ? '&#128263;' : '&#128266;';
-      btn.classList.toggle('muted', soundMuted);
-    }
+    btn.innerHTML = soundMuted ? '&#128263;' : '&#128266;';
     if (!soundMuted) sfx('click');
     localStorage.setItem('lm_muted', soundMuted ? '1' : '0');
   }
-  // Restore mute state
   if (localStorage.getItem('lm_muted') === '1') { soundMuted = true; }
 
-  // ============ EMOTE SYSTEM ============
-  function sendEmote(emoji) {
-    sfx('emote');
-    showFloatingEmote(emoji);
-    if (socket && socket.emit) socket.emit('emote:send', { emoji: emoji });
-  }
-  function showFloatingEmote(emoji) {
-    var el = document.createElement('div');
-    el.className = 'floating-emote';
-    el.innerHTML = emoji;
-    el.style.left = (20 + Math.random() * 60) + '%';
-    el.style.bottom = '80px';
-    document.body.appendChild(el);
-    setTimeout(function() { el.remove(); }, 2000);
+  // ---- SCREEN NAV ----
+  function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(function(s) { s.classList.remove('active'); s.style.display = 'none'; });
+    var el = document.getElementById(id);
+    if (el) { el.style.display = 'flex'; el.classList.add('active'); }
   }
 
-  // ============ SHARE / QR SYSTEM ============
-  function shareRoom() {
-    var code = document.getElementById('lobbyRoomCode').textContent;
-    var url = window.location.origin + '?join=' + code;
-    if (navigator.share) {
-      navigator.share({ title: 'Join Lets Mahjong!', text: 'Join my Mahjong game! Room: ' + code, url: url }).catch(function(){});
-    } else {
-      navigator.clipboard.writeText(url).then(function() { showToast('Link copied to clipboard!'); });
-    }
+  // ---- SETTINGS ----
+  function pickWind(type, wind, btn) {
+    var row = type === 'round' ? document.getElementById('roundWindRow') : document.getElementById('seatWindRow');
+    row.querySelectorAll('.wind-btn').forEach(function(b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+    if (type === 'round') settings.roundWind = wind;
+    else settings.seatWind = wind;
     sfx('click');
   }
-  function showQR() {
-    var code = document.getElementById('lobbyRoomCode').textContent;
-    document.getElementById('qrCode').textContent = code;
-    generateCodeDisplay(code);
-    document.getElementById('qrModal').classList.add('show');
-    sfx('click');
-  }
-  function generateCodeDisplay(code) {
-    var canvas = document.getElementById('qrCanvas');
-    var ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#0A0A1A';
-    ctx.fillRect(0, 0, 200, 200);
-    // Simple visual QR placeholder — large code display
-    ctx.fillStyle = '#00FFD1';
-    ctx.font = 'bold 60px monospace';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(code, 100, 90);
-    ctx.fillStyle = 'rgba(0,255,209,0.3)';
-    ctx.font = '14px Bangers';
-    ctx.fillText('LETS MAHJONG', 100, 150);
-    ctx.fillText(window.location.origin, 100, 175);
-    // Border glow
-    ctx.strokeStyle = '#00FFD1';
-    ctx.lineWidth = 3;
-    ctx.strokeRect(10, 10, 180, 180);
-  }
 
-  // ============ AUTO-RECONNECTION ============
-  function saveSession() {
-    if (!roomState) return;
-    var code = roomState.code || document.getElementById('lobbyRoomCode').textContent;
-    localStorage.setItem('lm_session', JSON.stringify({
-      code: code,
-      player: myPlayer,
-      time: Date.now()
-    }));
-  }
-  function tryReconnect() {
-    var saved = localStorage.getItem('lm_session');
-    if (!saved) return;
-    try {
-      var session = JSON.parse(saved);
-      // Only reconnect if less than 30 minutes old
-      if (Date.now() - session.time > 30 * 60 * 1000) {
-        localStorage.removeItem('lm_session');
-        return;
-      }
-      myPlayer = session.player;
-      document.getElementById('playerName').value = myPlayer.name;
-      // Try to rejoin mid-game first, then fall back to regular join
-      setTimeout(function() {
-        socket.emit('room:rejoin', { name: session.player.name, code: session.code }, function(res) {
-          if (res.success) {
-            showToast('Reconnected to room ' + session.code);
-            document.getElementById('lobbyRoomCode').textContent = session.code;
-            // Server re-emits phase event; only navigate to lobby if still in lobby
-            if (res.phase === 'lobby') showScreen('screenLobby');
-            sfx('join');
-          } else {
-            // Fall back to regular join (works for lobby-phase rooms)
-            socket.emit('room:join', { ...myPlayer, code: session.code }, function(res2) {
-              if (res2.success) {
-                showToast('Reconnected to room ' + session.code);
-                document.getElementById('lobbyRoomCode').textContent = session.code;
-                showScreen('screenLobby');
-                sfx('join');
-              } else {
-                localStorage.removeItem('lm_session');
-              }
-            });
-          }
-        });
-      }, 500);
-    } catch(e) { localStorage.removeItem('lm_session'); }
-  }
-  // Check for ?join= URL parameter
-  function checkJoinURL() {
-    var params = new URLSearchParams(window.location.search);
-    var joinCode = params.get('join');
-    if (joinCode && joinCode.length === 4) {
-      window._pendingJoin = joinCode;
-    }
-  }
-  checkJoinURL();
-
-  // ============ PLAYER STATS ============
-  var playerStats = JSON.parse(localStorage.getItem('lm_stats') || '{"games":0,"wins":0,"totalScore":0,"highScore":0,"rounds":0}');
-  function updateStats(isWinner, score) {
-    playerStats.rounds++;
-    playerStats.totalScore += score;
-    if (score > playerStats.highScore) playerStats.highScore = score;
-    if (isWinner) playerStats.wins++;
-    localStorage.setItem('lm_stats', JSON.stringify(playerStats));
-  }
-  function endGameStats() { playerStats.games++; localStorage.setItem('lm_stats', JSON.stringify(playerStats)); }
-  function showStatsBar() {
-    var bar = document.getElementById('statsBar');
-    if (!bar) return;
-    bar.innerHTML = '<div class="stat-chip">&#127922; GAMES <span class="stat-val">' + playerStats.games + '</span></div>' +
-      '<div class="stat-chip">&#127942; WINS <span class="stat-val">' + playerStats.wins + '</span></div>' +
-      '<div class="stat-chip">&#11088; HIGH <span class="stat-val">' + playerStats.highScore.toLocaleString() + '</span></div>' +
-      '<div class="stat-chip">&#128200; AVG <span class="stat-val">' + (playerStats.rounds > 0 ? Math.round(playerStats.totalScore / playerStats.rounds).toLocaleString() : '0') + '</span></div>';
-  }
-
-  // ============ CANVAS CONFETTI (FIREWORKS) ============
-  function launchCanvasConfetti(canvasId) {
-    var canvas = document.getElementById(canvasId);
-    if (!canvas) return;
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-    var ctx = canvas.getContext('2d');
-    var particles = [];
-    var colors = ['#00FFD1','#FF2D7B','#FFD700','#7C3AED','#3B82F6','#F59E0B','#E11D48','#059669'];
-    // Create burst particles
-    for (var i = 0; i < 120; i++) {
-      var angle = (Math.PI * 2 * i) / 120 + (Math.random() - 0.5) * 0.3;
-      var speed = 3 + Math.random() * 8;
-      particles.push({
-        x: canvas.width / 2,
-        y: canvas.height / 2,
-        vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed - 3,
-        color: colors[Math.floor(Math.random() * colors.length)],
-        size: 2 + Math.random() * 4,
-        life: 1,
-        decay: 0.008 + Math.random() * 0.012,
-        shape: Math.random() > 0.5 ? 'circle' : 'rect',
-        spin: Math.random() * 0.2 - 0.1
-      });
-    }
-    // Secondary bursts from sides
-    for (var b = 0; b < 2; b++) {
-      var bx = b === 0 ? canvas.width * 0.25 : canvas.width * 0.75;
-      var by = canvas.height * 0.4;
-      for (var j = 0; j < 40; j++) {
-        var a2 = (Math.PI * 2 * j) / 40 + (Math.random() - 0.5) * 0.5;
-        var s2 = 2 + Math.random() * 5;
-        particles.push({
-          x: bx, y: by,
-          vx: Math.cos(a2) * s2, vy: Math.sin(a2) * s2 - 2,
-          color: colors[Math.floor(Math.random() * colors.length)],
-          size: 1.5 + Math.random() * 3, life: 1,
-          decay: 0.01 + Math.random() * 0.015,
-          shape: Math.random() > 0.3 ? 'circle' : 'rect',
-          spin: Math.random() * 0.15 - 0.075
-        });
-      }
-    }
-    var frame = 0;
-    function animate() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      var alive = false;
-      particles.forEach(function(p) {
-        if (p.life <= 0) return;
-        alive = true;
-        p.life -= p.decay;
-        p.x += p.vx;
-        p.y += p.vy;
-        p.vy += 0.08; // gravity
-        p.vx *= 0.99;
-        ctx.save();
-        ctx.globalAlpha = Math.max(0, p.life);
-        ctx.fillStyle = p.color;
-        ctx.shadowColor = p.color;
-        ctx.shadowBlur = 8;
-        ctx.translate(p.x, p.y);
-        ctx.rotate(frame * p.spin);
-        if (p.shape === 'circle') {
-          ctx.beginPath();
-          ctx.arc(0, 0, p.size * p.life, 0, Math.PI * 2);
-          ctx.fill();
-        } else {
-          ctx.fillRect(-p.size/2, -p.size/2, p.size, p.size * 0.4);
-        }
-        ctx.restore();
-      });
-      frame++;
-      if (alive && frame < 300) requestAnimationFrame(animate);
-      else ctx.clearRect(0, 0, canvas.width, canvas.height);
-    }
-    animate();
-  }
-
-  function toggleChipV2(el) {
+  function toggleChip(el) {
     el.classList.toggle('active');
     sfx('click');
   }
 
-  // ---- SOCKET CONNECTION ----
-  let socket;
-  let myId = null;
-  let roomState = null;
-  let myPlayer = { name: '', avatar: AVATARS[0], color: COLORS[0] };
-  let isOffline = false;
-
-  if (typeof io !== 'undefined') {
-    socket = io();
-  } else {
-    console.warn('Socket.io not loaded — offline/preview mode. Start the server with: npm start');
-    isOffline = true;
-    socket = {
-      on: function() {},
-      emit: function(ev, data, cb) {
-        if (typeof cb === 'function') cb({ success: false, error: 'Server not connected. Run: npm start' });
-        showToast('Server not running! Open terminal → npm start');
-      },
-      id: 'offline-' + Math.random().toString(36).slice(2,8)
-    };
-    myId = socket.id;
-    // Update connection bar immediately (script is at end of body, DOM is ready)
-    var _offlineCheck = function() {
-      var bar = document.getElementById('connBar');
-      if (bar) {
-        bar.className = 'conn-bar-v2';
-        bar.innerHTML = '<span class="conn-dot"></span> Offline — start server with: npm start';
-      }
-    };
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', _offlineCheck);
-    } else {
-      _offlineCheck();
-    }
+  function readSettings() {
+    settings.gameMode = document.getElementById('setGameMode').value;
+    settings.isMahjong = document.getElementById('togMahjong').classList.contains('active');
+    settings.isConcealed = document.getElementById('togConcealed').classList.contains('active');
+    settings.isLastTile = document.getElementById('togLastTile').classList.contains('active');
+    settings.isCleanSweep = document.getElementById('togCleanSweep').classList.contains('active');
   }
 
-  socket.on('connect', () => {
-    myId = socket.id;
-    var bar = document.getElementById('connBar');
-    bar.className = 'conn-bar-v2 connected';
-    bar.innerHTML = '<span class="conn-dot green"></span> CONNECTED';
-    setTimeout(() => bar.style.display = 'none', 2000);
-    // Show emote bar when in game
-    sfx('join');
-  });
-
-  socket.on('disconnect', () => {
-    var bar = document.getElementById('connBar');
-    bar.className = 'conn-bar-v2 reconnecting';
-    bar.innerHTML = '<span class="conn-dot red"></span> RECONNECTING... <button class="retry-btn" onclick="location.reload()">RETRY</button>';
-    bar.style.display = 'flex';
-    sfx('error');
-  });
-
-  // ---- ROOM STATE SYNC (the core of multiplayer) ----
-  socket.on('room:state', (data) => {
-    roomState = data;
-    updateLobbyUI();
-    updateScanBadges();
-  });
-
-  socket.on('player:joined', (data) => { showToast(`${data.avatar} ${data.name} joined!`); sfx('join'); });
-  socket.on('player:left', (data) => showToast(`${data.name} left the room`));
-  socket.on('game:started', () => showScreen('screenSettings'));
-  socket.on('phase:scanning', () => {
-    document.getElementById('scanResult').style.display = 'none';
-    document.getElementById('scanWaiting').style.display = 'none';
-    document.getElementById('cameraZone').classList.remove('has-image');
-    const img = document.getElementById('cameraZone').querySelector('img');
-    if (img) img.remove();
-    document.getElementById('cameraInput').value = '';
-    showScreen('screenScan');
-    // Auto-open camera after a brief delay for screen transition
-    setTimeout(function() {
-      document.getElementById('cameraInput').click();
-    }, 500);
-  });
-
-  socket.on('scan:playerDone', (data) => showToast(`${data.name} scanned their hand`));
-
-  socket.on('round:results', (data) => {
-    showResultsScreen(data);
-  });
-
-  socket.on('round:new', (data) => {
-    document.getElementById('settingsRound').textContent = data.round;
-    showScreen('screenSettings');
-  });
-
-  socket.on('game:over', (data) => {
-    showFinalScreen(data.results);
-  });
-
-  socket.on('seat:error', (data) => showToast(data.message));
-  socket.on('game:error', (data) => showToast(data.message));
-
-  // Emote received from other player
-  socket.on('emote:received', (data) => {
-    showFloatingEmote(data.emoji);
-  });
-
-
-  // ---- SPLASH BACKGROUND TILES ----
-  function initSplash() {
-    var overlay = document.getElementById('splashOverlay');
-    if (!overlay) return;
-    var syms = ['東','南','西','北','發','中','B','萬','竹','●'];
-    for (var i = 0; i < 25; i++) {
-      var t = document.createElement('div');
-      t.className = 'splash-tile';
-      t.textContent = syms[Math.floor(Math.random() * syms.length)];
-      t.style.left = Math.random() * 100 + '%';
-      t.style.setProperty('--dur', (3 + Math.random() * 4) + 's');
-      t.style.setProperty('--delay', (-Math.random() * 4) + 's');
-      t.style.fontSize = (20 + Math.random() * 30) + 'px';
-      overlay.appendChild(t);
-    }
-  }
-
-  // ---- INIT ----
-  function init() {
-    initSplash();
-    buildBG();
-    buildAvatars();
-    buildColors();
-    // Restore mute button state
-    var muteBtn = document.getElementById('muteBtn');
-    if (muteBtn && soundMuted) { muteBtn.innerHTML = '&#128263;'; muteBtn.classList.add('muted'); }
-    document.getElementById('playerName').addEventListener('input', () => {
-      document.getElementById('btnContinue').disabled = document.getElementById('playerName').value.trim().length < 1;
-    });
-    document.getElementById('btnContinue').addEventListener('click', goToRoom);
-    document.getElementById('btnCreate').addEventListener('click', createRoom);
-    document.getElementById('btnShowJoin').addEventListener('click', () => {
-      document.getElementById('joinSection').style.display = 'block';
-      document.getElementById('joinCode').focus();
-      sfx('click');
-    });
-    document.getElementById('btnJoin').addEventListener('click', joinRoom);
-    document.getElementById('btnStartGame').addEventListener('click', startGame);
-    document.getElementById('btnGoScan').addEventListener('click', goToScan);
-    document.getElementById('cameraInput').addEventListener('change', function() { handlePhoto(this); });
-    document.getElementById('cameraZone').addEventListener('click', function(e) {
-      if (e.target.id === 'cameraInput') return;
-      document.getElementById('cameraInput').click();
-    });
-    document.getElementById('btnConfirmScan').addEventListener('click', confirmScan);
-    document.getElementById('btnRetake').addEventListener('click', retake);
-    document.getElementById('btnNextRound').addEventListener('click', nextRound);
-    document.getElementById('btnEndGame').addEventListener('click', endGame);
-    document.getElementById('btnNewGame').addEventListener('click', () => location.reload());
-    // Check for pending join from URL
-    if (window._pendingJoin) {
-      document.getElementById('joinCode').value = window._pendingJoin;
-    }
-    // Try reconnection
-    tryReconnect();
-  }
-
-  function buildBG() {
-    const bg = document.getElementById('bgPattern');
-    const syms = ['東','南','西','北','發','中','B','萬','竹','●','一','九'];
-    const neonColors = ['rgba(0,255,209,0.3)','rgba(255,45,123,0.3)','rgba(255,215,0,0.3)','rgba(124,58,237,0.3)'];
-    // Cinematic 3D floating tiles
-    for (let i = 0; i < 20; i++) {
-      const el = document.createElement('div');
-      el.className = 'tile-float';
-      el.textContent = syms[Math.floor(Math.random() * syms.length)];
-      el.style.left = Math.random()*100 + '%';
-      el.style.setProperty('--dur', (18 + Math.random()*25) + 's');
-      el.style.setProperty('--o', (0.04 + Math.random()*0.08).toFixed(2));
-      el.style.setProperty('--drift', Math.round((Math.random()-0.5)*120));
-      el.style.animationDelay = (-Math.random()*25) + 's';
-      el.style.fontSize = (28 + Math.random()*36) + 'px';
-      el.style.textShadow = '0 0 20px ' + neonColors[Math.floor(Math.random()*neonColors.length)];
-      bg.appendChild(el);
-    }
-    // Particle sparkles
-    for (let i = 0; i < 30; i++) {
-      const p = document.createElement('div');
-      p.className = 'particle';
-      p.style.left = Math.random()*100 + '%';
-      p.style.top = Math.random()*100 + '%';
-      p.style.setProperty('--dur', (3 + Math.random()*5) + 's');
-      p.style.animationDelay = (-Math.random()*5) + 's';
-      const size = 1 + Math.random()*3;
-      p.style.width = size + 'px';
-      p.style.height = size + 'px';
-      p.style.background = neonColors[Math.floor(Math.random()*neonColors.length)].replace('0.3','0.6');
-      p.style.boxShadow = '0 0 6px ' + neonColors[Math.floor(Math.random()*neonColors.length)];
-      bg.appendChild(p);
-    }
-  }
-
-  // Avatar/color clicks are handled by the inline script block above.
-  // These functions just ensure myPlayer stays in sync if init runs later.
-  function buildAvatars() {
-    var grid = document.getElementById('animalGrid');
-    if (!grid) return;
-    var sel = grid.querySelector('.animal-card.selected');
-    if (sel) {
-      var idx = parseInt(sel.getAttribute('data-avatar'));
-      myPlayer.avatar = AVATARS[idx] || sel.querySelector('.card-emoji').textContent;
-    }
-  }
-
-  function buildColors() {
-    var orbs = document.getElementById('colorOrbs');
-    if (!orbs) return;
-    var sel = orbs.querySelector('.color-orb.selected');
-    if (sel) {
-      var idx = parseInt(sel.getAttribute('data-color'));
-      myPlayer.color = COLORS[idx];
-    }
-  }
-
-  var _screenTimer = null;
-  function showScreen(id) {
-    // Cancel any in-flight screen transition
-    if (_screenTimer) { clearTimeout(_screenTimer); _screenTimer = null; }
-    // Clean up any leftover exit states
-    document.querySelectorAll('.screen.exit').forEach(function(s) { s.classList.remove('exit'); s.style.display = 'none'; });
-
-    var current = document.querySelector('.screen.active');
-    var next = document.getElementById(id);
-    if (!next) return;
-
-    if (current && current.id !== id) {
-      current.classList.add('exit');
-      current.classList.remove('active');
-      _screenTimer = setTimeout(function() {
-        _screenTimer = null;
-        current.classList.remove('exit');
-        current.style.display = 'none';
-        next.style.display = '';
-        next.classList.add('active');
-      }, 350);
-    } else {
-      document.querySelectorAll('.screen').forEach(function(s) { s.classList.remove('active'); s.style.display = 'none'; });
-      next.style.display = '';
-      next.classList.add('active');
-    }
-    // Show emote bar during gameplay screens
-    var emoteBar = document.getElementById('emoteBar');
-    if (emoteBar) {
-      var gameScreens = ['screenLobby','screenSettings','screenScan','screenResults'];
-      emoteBar.classList.toggle('visible', gameScreens.indexOf(id) !== -1);
-    }
-    // Save session for reconnection
-    saveSession();
-  }
-
-  function goToRoom() {
-    myPlayer.name = document.getElementById('playerName').value.trim();
-    document.getElementById('displayName').textContent = myPlayer.name;
-    if (window._pendingJoin) {
-      var pendingCode = window._pendingJoin;
-      window._pendingJoin = null;
-      document.getElementById('joinCode').value = pendingCode;
-      showScreen('screenRoom');
-      // Auto-join after brief delay for screen transition
-      setTimeout(function() { joinRoom(); }, 300);
-    } else {
-      showScreen('screenRoom');
-    }
-  }
-
-  // ---- REAL ROOM CREATION ----
-  function createRoom() {
-    socket.emit('room:create', myPlayer, (res) => {
-      if (res.success) {
-        showToast('Room created: ' + res.code);
-        sfx('confirm');
-        document.getElementById('lobbyRoomCode').textContent = res.code;
-        showScreen('screenLobby');
-      }
-    });
-  }
-
-  // ---- REAL ROOM JOIN ----
-  function joinRoom() {
-    const code = document.getElementById('joinCode').value.trim();
-    if (code.length !== 4) return showToast('Enter a 4-digit code');
-    socket.emit('room:join', { ...myPlayer, code }, (res) => {
-      if (res.success) {
-        showToast('Joined room ' + res.code);
-        document.getElementById('lobbyRoomCode').textContent = res.code;
-        showScreen('screenLobby');
-      } else {
-        showToast(res.error);
-      }
-    });
-  }
-
-  // ---- REAL SEAT PICK ----
-  function pickSeat(wind) {
-    socket.emit('seat:pick', { wind });
-    sfx('seat');
-  }
-
-  // ---- UPDATE LOBBY FROM SERVER STATE ----
-  function updateLobbyUI() {
-    if (!roomState) return;
-
-    // Players list
-    const list = document.getElementById('lobbyPlayers');
-    list.innerHTML = '';
-    roomState.players.forEach(function(p, pIdx) {
-      const el = document.createElement('div');
-      el.className = 'lobby-player-card' + (p.isHost ? ' is-host' : '');
-      el.style.animationDelay = (pIdx * 0.1) + 's';
-      el.innerHTML = `
-        <div class="lp-avatar" style="background:${p.color}20;">${p.avatar}</div>
-        <div class="lp-name">${p.name}${p.id === myId ? ' (You)' : ''}</div>
-        ${p.seat ? `<div class="lp-seat">${p.seat.toUpperCase()}</div>` : '<div class="lp-seat" style="background:rgba(255,215,0,0.1);color:#FFD700;border:1px solid rgba(255,215,0,0.2);">No seat</div>'}
-      `;
-      list.appendChild(el);
-    });
-
-    // Seats on table
-    document.querySelectorAll('.seat').forEach(s => {
-      const wind = s.className.match(/pos-(\w+)/)?.[1];
-      if (!wind) return;
-      const occupant = roomState.players.find(p => p.seat === wind);
-      s.classList.remove('taken', 'mine');
-      const old = s.querySelector('.seat-player-name');
-      if (old) old.remove();
-      if (occupant) {
-        s.classList.add(occupant.id === myId ? 'mine' : 'taken');
-        const nm = document.createElement('span');
-        nm.className = 'seat-player-name';
-        nm.textContent = occupant.name;
-        s.appendChild(nm);
-      }
-    });
-
-    // Start button (host only)
-    const amHost = roomState.players.find(p => p.id === myId)?.isHost;
-    const seated = roomState.players.filter(p => p.seat).length;
-    const btn = document.getElementById('btnStartGame');
-    btn.disabled = !amHost || seated < 2;
-    btn.textContent = seated >= 2 ? `⚡ Start Game (${seated} players)` : `⚡ Need 2+ seated players`;
-    document.getElementById('hostOnlyMsg').style.display = amHost ? 'none' : 'block';
-
-    // Settings host-only controls
-    const amHostSettings = roomState.players.find(p => p.id === myId)?.isHost;
-    const settingsMsg = document.getElementById('settingsHostMsg');
-    const scanBtn = document.getElementById('btnGoScan');
-    if (amHostSettings) {
-      settingsMsg.textContent = 'Configure the round settings';
-      scanBtn.style.display = 'flex';
-      document.querySelectorAll('#screenSettings select').forEach(s => s.disabled = false);
-    } else {
-      settingsMsg.textContent = 'Waiting for host to start scanning...';
-      scanBtn.style.display = 'none';
-      document.querySelectorAll('#screenSettings select').forEach(s => s.disabled = true);
-    }
-  }
-
-  function startGame() {
-    socket.emit('game:start');
-  }
-
-
-  // ---- SCAN PHASE ----
+  // ---- CAMERA ----
   function goToScan() {
-    socket.emit('settings:update', {
-      gameMode: document.getElementById('setGameMode').value,
-      roundWind: document.getElementById('setRoundWind').value,
-      isMahjong: document.getElementById('setMahjong').checked,
-      isConcealed: document.getElementById('setConcealed').checked,
-      isLastTile: document.getElementById('setLastTile').checked,
-      isCleanSweep: document.getElementById('setCleanSweep').checked
-    });
-    socket.emit('phase:scan');
+    readSettings();
+    showScreen('screenScan');
+    resetScanUI();
     sfx('click');
+    // Auto open camera
+    setTimeout(function() { document.getElementById('cameraInput').click(); }, 400);
   }
 
-  function updateScanBadges() {
-    if (!roomState || roomState.phase !== 'scanning') return;
-    const row = document.getElementById('scanStatusRow');
-    row.innerHTML = '';
-    roomState.players.filter(p => p.seat).forEach(function(p, bIdx) {
-      const badge = document.createElement('div');
-      badge.className = 'scan-badge ' + (p.scanned ? 'scanned' : 'waiting');
-      badge.style.animationDelay = (bIdx * 0.1) + 's';
-      badge.innerHTML = `<span class="dot"></span> ${p.name}`;
-      row.appendChild(badge);
-    });
+  function openCamera() {
+    document.getElementById('cameraInput').click();
   }
 
-  function handlePhoto(input) {
-    if (!input.files?.[0]) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const zone = document.getElementById('cameraZone');
+  function resetScanUI() {
+    document.getElementById('scanStatus').style.display = 'none';
+    document.getElementById('detectedTiles').innerHTML = '';
+    document.getElementById('scanButtons').style.display = 'none';
+    document.getElementById('cameraPrompt').style.display = 'block';
+    document.getElementById('cameraZone').classList.remove('has-image');
+    var img = document.getElementById('cameraZone').querySelector('img');
+    if (img) img.remove();
+    var beam = document.getElementById('cameraZone').querySelector('.scan-beam');
+    if (beam) beam.remove();
+    document.getElementById('cameraInput').value = '';
+    scannedTiles = null;
+  }
+
+  document.getElementById('cameraInput').addEventListener('change', function() {
+    if (!this.files || !this.files[0]) return;
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var zone = document.getElementById('cameraZone');
       zone.classList.add('has-image');
-      const old = zone.querySelector('img');
+      document.getElementById('cameraPrompt').style.display = 'none';
+      var old = zone.querySelector('img');
       if (old) old.remove();
-      const img = document.createElement('img');
+      var img = document.createElement('img');
       img.src = e.target.result;
       zone.appendChild(img);
-      window._capturedImage = e.target.result;
       scanWithAI(e.target.result);
     };
-    reader.readAsDataURL(input.files[0]);
-  }
+    reader.readAsDataURL(this.files[0]);
+  });
 
+  // ---- AI SCAN ----
   async function scanWithAI(imageDataUrl) {
-    const container = document.getElementById('detectedTiles');
-    const scanResult = document.getElementById('scanResult');
-    scanResult.style.display = 'block';
-    container.innerHTML = '<div style="text-align:center;padding:20px;position:relative;"><div class="spinner scan-pulse"></div><p style="color:var(--neon-teal);font-size:13px;margin-top:12px;animation:aurroraPulse 1.5s ease-in-out infinite alternate;">AI is analyzing your tiles...</p></div>';
-    // Add scan beam to camera zone
+    var status = document.getElementById('scanStatus');
+    var tilesGrid = document.getElementById('detectedTiles');
+    var buttons = document.getElementById('scanButtons');
+
+    status.style.display = 'block';
+    status.innerHTML = '<div class="scan-status"><div class="spinner"></div><p>AI is analyzing your tiles...</p></div>';
+    buttons.style.display = 'none';
+    tilesGrid.innerHTML = '';
+
+    // Add scan beam
     var zone = document.getElementById('cameraZone');
-    var oldBeam = zone.querySelector('.scan-beam');
-    if (!oldBeam) { var beam = document.createElement('div'); beam.className = 'scan-beam'; zone.appendChild(beam); }
-    document.getElementById('btnConfirmScan').style.display = 'none';
-    document.getElementById('btnRetake').style.display = 'none';
+    if (!zone.querySelector('.scan-beam')) {
+      var beam = document.createElement('div');
+      beam.className = 'scan-beam';
+      zone.appendChild(beam);
+    }
+
+    sfx('scan');
+
     try {
-      const response = await fetch('/api/scan', {
+      var response = await fetch('/api/scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ image: imageDataUrl })
       });
-      const data = await response.json();
+      var data = await response.json();
+
+      // Remove scan beam
+      var b = zone.querySelector('.scan-beam');
+      if (b) b.remove();
+
       if (!data.success) {
-        container.innerHTML = '<div style="text-align:center;padding:16px;"><p style="color:#EF4444;font-weight:700;font-size:14px;">&#9888; ' + data.error + '</p><p style="color:var(--gray);font-size:12px;margin-top:8px;">Try retaking with better lighting</p></div>';
-        // Remove scan beam on error
-        var beam1 = document.getElementById('cameraZone').querySelector('.scan-beam');
-        if (beam1) beam1.remove();
-        document.getElementById('btnRetake').style.display = 'block';
+        status.innerHTML = '<div class="scan-status" style="color:#EF4444;">&#9888; ' + data.error + '<br><span style="font-size:11px;opacity:0.6;">Try retaking with better lighting</span></div>';
+        buttons.style.display = 'flex';
+        document.getElementById('btnCalculate').style.display = 'none';
+        sfx('error');
         return;
       }
-      // Remove scan beam on success
-      var scanBeam = document.getElementById('cameraZone').querySelector('.scan-beam');
-      if (scanBeam) scanBeam.remove();
-      window._scannedTiles = data.tiles;
-      displayDetectedTiles(data.tiles);
-      document.getElementById('btnConfirmScan').style.display = 'block';
-      document.getElementById('btnRetake').style.display = 'block';
-      showToast('Detected ' + data.count + ' tiles!');
+
+      scannedTiles = data.tiles;
+      displayTiles(data.tiles, tilesGrid);
+      status.innerHTML = '<div class="scan-status" style="color:var(--neon-teal);">&#9989; Detected ' + data.count + ' tiles</div>';
+      buttons.style.display = 'flex';
+      document.getElementById('btnCalculate').style.display = 'block';
+      showToast('Found ' + data.count + ' tiles!');
+
     } catch (err) {
-      console.error('Scan error:', err);
-      // Remove scan beam on network error
-      var beam2 = document.getElementById('cameraZone').querySelector('.scan-beam');
-      if (beam2) beam2.remove();
-      container.innerHTML = '<div style="text-align:center;padding:16px;"><p style="color:#EF4444;font-weight:700;font-size:14px;">&#9888; Connection error</p><p style="color:var(--gray);font-size:12px;margin-top:8px;">Make sure the server is running</p></div>';
-      document.getElementById('btnRetake').style.display = 'block';
+      var b2 = zone.querySelector('.scan-beam');
+      if (b2) b2.remove();
+      status.innerHTML = '<div class="scan-status" style="color:#EF4444;">&#9888; Connection error<br><span style="font-size:11px;opacity:0.6;">Make sure the server is running</span></div>';
+      buttons.style.display = 'flex';
+      document.getElementById('btnCalculate').style.display = 'none';
+      sfx('error');
     }
   }
 
-  function displayDetectedTiles(hand) {
-    const container = document.getElementById('detectedTiles');
+  function displayTiles(tiles, container) {
     container.innerHTML = '';
-    hand.forEach(function(t, idx) {
-      const el = document.createElement('div');
-      el.className = 'detected-tile';
-      el.style.cssText = 'width:38px;height:50px;border:2px solid rgba(255,255,255,0.2);border-radius:6px;background:rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;perspective:600px;';
-      el.style.animationDelay = (idx * 0.06) + 's';
+    tiles.forEach(function(t, i) {
+      var el = document.createElement('div');
+      el.className = 'tile-chip';
+      el.style.animationDelay = (i * 0.05) + 's';
       var sym = '';
-      if (t.suit==='characters') { sym=CHAR_MAP.characters[t.value]; el.style.color='#FF6B6B'; }
-      else if (t.suit==='bamboo') { sym=t.value; el.style.color='#00FFD1'; }
-      else if (t.suit==='circles') { sym=t.value; el.style.color='#6BC5FF'; }
-      else if (t.type==='wind') { sym=CHAR_MAP.winds[t.value]; el.style.color='#E0E0E0'; }
-      else if (t.type==='dragon') { sym=CHAR_MAP.dragons[t.value]; el.style.color=t.value==='green'?'#00FFD1':'#FF6B6B'; }
-      else if (t.type==='flower') { sym='\u{1F338}'; }
+      if (t.suit === 'characters') { sym = CHAR_MAP.characters[t.value]; el.style.color = '#FF6B6B'; }
+      else if (t.suit === 'bamboo') { sym = t.value; el.style.color = '#00FFD1'; }
+      else if (t.suit === 'circles') { sym = t.value; el.style.color = '#6BC5FF'; }
+      else if (t.type === 'wind') { sym = CHAR_MAP.winds[t.value]; el.style.color = '#E0E0E0'; }
+      else if (t.type === 'dragon') { sym = CHAR_MAP.dragons[t.value]; el.style.color = t.value === 'green' ? '#00FFD1' : '#FF6B6B'; }
+      else if (t.type === 'flower') { sym = '\u{1F338}'; }
       el.textContent = sym;
       container.appendChild(el);
     });
   }
 
-  function confirmScan() {
-    if (!window._scannedTiles) return;
-    var MS = window.MahjongScorer;
-    if (!MS) { showToast('Scoring engine not loaded. Refresh the page.'); return; }
-    const tiles = window._scannedTiles;
-    const groups = autoGroupTiles(tiles);
-    const mySeat = roomState?.players.find(p => p.id === myId)?.seat || 'east';
-    const settings = roomState?.settings || {};
-    const result = MS.analyzeHand(groups, [], {
-      ownWind: mySeat,
-      roundWind: settings.roundWind || 'west',
-      isEast: mySeat === 'east',
-      isMahjong: settings.isMahjong !== undefined ? settings.isMahjong : true,
-      isConcealed: settings.isConcealed || false,
-      gameMode: settings.gameMode || 'east_round'
-    });
-    const handName = result.hands.length > 0 ? result.hands[0].name : 'Standard Hand';
-    sfx('confirm');
-    socket.emit('scan:confirm', {
-      tiles: tiles,
-      score: result.scoring.finalScore,
-      handName: handName
-    });
-    document.getElementById('scanResult').style.display = 'none';
-    document.getElementById('scanWaiting').style.display = 'block';
+  function retake() {
+    resetScanUI();
+    setTimeout(function() { document.getElementById('cameraInput').click(); }, 300);
   }
 
-  function retake() {
-    document.getElementById('scanResult').style.display = 'none';
-    document.getElementById('cameraZone').classList.remove('has-image');
-    var img = document.getElementById('cameraZone').querySelector('img');
-    if (img) img.remove();
-    document.getElementById('cameraInput').value = '';
-    window._scannedTiles = null;
+  // ---- SCORING ----
+  function calculateScore() {
+    if (!scannedTiles || scannedTiles.length === 0) { showToast('No tiles to score'); return; }
+    var MS = window.MahjongScorer;
+    if (!MS) { showToast('Scoring engine not loaded. Refresh.'); return; }
+
+    readSettings();
+    var groups = autoGroupTiles(scannedTiles);
+    var flowers = scannedTiles.filter(function(t) { return t.type === 'flower'; });
+
+    var result = MS.analyzeHand(groups, flowers, {
+      ownWind: settings.seatWind,
+      roundWind: settings.roundWind,
+      isEast: settings.seatWind === 'east',
+      isMahjong: settings.isMahjong,
+      isConcealed: settings.isConcealed,
+      gameMode: settings.gameMode
+    });
+
+    showResults(result);
   }
 
   function autoGroupTiles(tiles) {
     var MS = window.MahjongScorer;
     if (!MS) return [];
-    var sorted = tiles.slice().sort(function(a,b) { return MS.tileId(a).localeCompare(MS.tileId(b)); });
+    // Filter out flowers for grouping
+    var handTiles = tiles.filter(function(t) { return t.type !== 'flower'; });
+    var sorted = handTiles.slice().sort(function(a,b) { return MS.tileId(a).localeCompare(MS.tileId(b)); });
     var groups = [];
     var used = new Array(sorted.length).fill(false);
-    // Pungs: find groups of 3 identical tiles
+
+    // Kongs: 4 identical
+    for (var ki = 0; ki < sorted.length - 3; ki++) {
+      if (used[ki]) continue;
+      var km = [ki];
+      for (var kj = ki + 1; kj < sorted.length && km.length < 4; kj++) {
+        if (!used[kj] && MS.tileId(sorted[kj]) === MS.tileId(sorted[ki])) km.push(kj);
+      }
+      if (km.length === 4) {
+        km.forEach(function(x) { used[x] = true; });
+        groups.push({ tiles: km.map(function(x) { return sorted[x]; }), type: 'kong', exposed: false });
+      }
+    }
+
+    // Pungs: 3 identical
     for (var i = 0; i < sorted.length - 2; i++) {
       if (used[i]) continue;
       var m = [i];
@@ -1883,10 +671,10 @@
         groups.push({ tiles: m.map(function(x) { return sorted[x]; }), type: 'pung', exposed: false });
       }
     }
-    // Chows: find sequences of 3 in a suit
-    var suits = MS.SUITS || ['characters', 'bamboo', 'circles'];
+
+    // Chows: sequences of 3
+    var suits = ['characters', 'bamboo', 'circles'];
     suits.forEach(function(suit) {
-      // Collect available suited tiles
       var avail = [];
       for (var k = 0; k < sorted.length; k++) {
         if (!used[k] && sorted[k].suit === suit) avail.push({ t: sorted[k], i: k });
@@ -1908,119 +696,190 @@
             used[avail[i1].i] = true;
             used[avail[i2].i] = true;
             groups.push({ tiles: [avail[ci].t, avail[i1].t, avail[i2].t], type: 'chow', exposed: false });
-            avail.splice(i2, 1);
-            avail.splice(i1, 1);
-            avail.splice(ci, 1);
-            changed = true;
-            break;
+            avail.splice(i2, 1); avail.splice(i1, 1); avail.splice(ci, 1);
+            changed = true; break;
           }
         }
       }
     });
-    // Pairs: remaining identical tiles
+
+    // Pairs
     for (var pi = 0; pi < sorted.length - 1; pi++) {
       if (used[pi]) continue;
       for (var pj = pi + 1; pj < sorted.length; pj++) {
         if (!used[pj] && MS.tileId(sorted[pj]) === MS.tileId(sorted[pi])) {
-          used[pi] = true;
-          used[pj] = true;
+          used[pi] = true; used[pj] = true;
           groups.push({ tiles: [sorted[pi], sorted[pj]], type: 'pair', exposed: false });
           break;
         }
       }
     }
+
     return groups;
   }
 
-  function showResultsScreen(data) {
+  // ---- SHOW RESULTS ----
+  function showResults(result) {
     showScreen('screenResults');
-    const winner = data.results[0];
-    if (!winner) return;
-    document.getElementById('winnerName').textContent = winner.name;
-    document.getElementById('winnerHand').textContent = '+' + winner.roundScore.toLocaleString() + ' PTS';
-    const sb = document.getElementById('scoreboard');
-    sb.innerHTML = '';
-    data.results.forEach(function(p,i) {
-      const row = document.createElement('div');
-      row.className = 'sb-player-cinematic' + (i===0?' winner':'');
-      row.style.animationDelay = (0.3 + i * 0.15) + 's';
-      row.innerHTML = '<div class="sb-rank">' + (i+1) + '</div><div class="sb-avatar" style="font-size:24px;">' + p.avatar + '</div><div class="sb-info" style="flex:1;"><div class="sb-name">' + p.name + (p.id===myId?' (You)':'') + '</div><div style="font-size:11px;color:rgba(255,255,255,0.4);">' + (p.seat ? p.seat.toUpperCase() : '') + '</div></div><div class="sb-score">+' + p.roundScore.toLocaleString() + '</div>';
-      sb.appendChild(row);
-    });
-    // Total standings
-    var totalsDiv = document.createElement('div');
-    totalsDiv.innerHTML = '<div style="height:12px"></div><div style="font-family:Bangers,cursive;text-align:center;color:rgba(255,255,255,0.4);font-size:13px;letter-spacing:2px;margin-bottom:8px;">TOTAL STANDINGS</div>';
-    sb.appendChild(totalsDiv);
-    const totals = Object.entries(data.totalScores).map(function(entry) {
-      const id = entry[0], sc = entry[1];
-      const pl = data.results.find(r=>r.id===id) || (roomState ? roomState.players.find(p=>p.id===id) : null) || {};
-      return { id:id, score:sc, name:pl.name||'?', avatar:pl.avatar||'' };
-    }).sort((a,b) => b.score - a.score);
-    totals.forEach(function(p) {
-      const bar = document.createElement('div');
-      bar.className = 'sb-total-bar';
-      bar.innerHTML = '<span class="sb-total-name">' + p.avatar + ' ' + p.name + '</span><span class="sb-total-score">' + p.score.toLocaleString() + '</span>';
-      sb.appendChild(bar);
-    });
-    const amHost = roomState ? roomState.players.find(p=>p.id===myId) : null;
-    const isHost = amHost ? amHost.isHost : false;
-    document.getElementById('btnNextRound').style.display = isHost ? 'flex' : 'none';
-    document.getElementById('btnEndGame').style.display = isHost ? 'flex' : 'none';
-    // Update stats
-    var myResult = data.results.find(function(r){ return r.id === myId; });
-    if (myResult) updateStats(data.results[0].id === myId, myResult.roundScore);
-    // Canvas confetti + sound
     sfx('win');
-    launchCanvasConfetti('confettiCanvas');
+
+    var score = result.scoring.finalScore;
+    document.getElementById('scoreNumber').textContent = score.toLocaleString();
+
+    var handName = result.hands && result.hands.length > 0 ? result.hands[0].name : 'Standard Hand';
+    document.getElementById('handName').textContent = handName;
+
+    // Limit badge
+    var lb = document.getElementById('limitBadge');
+    if (result.scoring.limitName) {
+      lb.style.display = 'inline-block';
+      lb.className = 'limit-badge';
+      lb.textContent = (result.scoring.limitName || 'LIMIT HAND') + '!';
+    } else {
+      lb.style.display = 'none';
+    }
+
+    // Show tiles preview
+    displayTiles(scannedTiles, document.getElementById('tilesPreview'));
+
+    // Breakdown
+    var bd = document.getElementById('breakdown');
+    bd.innerHTML = '<div class="breakdown-title">SCORE BREAKDOWN</div>';
+
+    var rows = [];
+    rows.push({ label: 'Base Score', value: result.scoring.basePoints || 0 });
+    rows.push({ label: 'Total Doubles', value: result.scoring.doubles || 0, gold: true });
+
+    if (result.hands) {
+      result.hands.forEach(function(h) {
+        if (h.doubles > 0) rows.push({ label: h.name, value: '+' + h.doubles + ' double' + (h.doubles > 1 ? 's' : '') });
+        else rows.push({ label: h.name, value: 'Detected' });
+      });
+    }
+    if (result.scoring.doubleReasons && result.scoring.doubleReasons.length > 0) {
+      result.scoring.doubleReasons.forEach(function(r) { rows.push({ label: r, value: '', gold: true }); });
+    }
+
+    if (settings.isMahjong) rows.push({ label: 'Mahjong', value: 'Yes' });
+    if (settings.isConcealed) rows.push({ label: 'Concealed Hand', value: 'Yes' });
+    rows.push({ label: 'Seat Wind', value: settings.seatWind.charAt(0).toUpperCase() + settings.seatWind.slice(1) });
+    rows.push({ label: 'Round Wind', value: settings.roundWind.charAt(0).toUpperCase() + settings.roundWind.slice(1) });
+
+    rows.forEach(function(r, i) {
+      var row = document.createElement('div');
+      row.className = 'breakdown-row';
+      row.style.animationDelay = (0.2 + i * 0.08) + 's';
+      row.innerHTML = '<span class="label">' + r.label + '</span><span class="value' + (r.gold ? ' gold' : '') + '">' + r.value + '</span>';
+      bd.appendChild(row);
+    });
+
+    // Final score row
+    var finalRow = document.createElement('div');
+    finalRow.className = 'breakdown-row';
+    finalRow.style.borderBottom = 'none';
+    finalRow.style.marginTop = '8px';
+    finalRow.style.animationDelay = (0.2 + rows.length * 0.08) + 's';
+    finalRow.innerHTML = '<span class="label" style="font-weight:700;color:white;">FINAL SCORE</span><span class="value gold" style="font-size:20px;">' + score.toLocaleString() + '</span>';
+    bd.appendChild(finalRow);
+
+    // Confetti
+    launchConfetti();
   }
 
-  function showFinalScreen(results) {
-    showScreen('screenFinal');
-    const sb = document.getElementById('finalScoreboard');
-    sb.innerHTML = '';
-    const medals = ['&#129351;','&#129352;','&#129353;'];
-    results.forEach(function(p,i) {
-      const row = document.createElement('div');
-      row.className = 'sb-player-cinematic'+(i===0?' winner':'');
-      row.style.animationDelay = (0.3 + i * 0.2) + 's';
-      row.innerHTML = '<div class="sb-rank">' + (medals[i]||(i+1)) + '</div><div class="sb-avatar" style="font-size:24px;">' + p.avatar + '</div><div class="sb-info" style="flex:1;"><div class="sb-name">' + p.name + '</div><div style="font-size:11px;color:rgba(255,255,255,0.4);">' + p.rounds + ' ROUNDS</div></div><div class="sb-score">' + p.totalScore.toLocaleString() + '</div>';
-      sb.appendChild(row);
-    });
-    endGameStats();
-    showStatsBar();
-    sfx('win');
-    launchCanvasConfetti('confettiCanvas2');
-    localStorage.removeItem('lm_session');
+  function scanAgain() {
+    showScreen('screenScan');
+    resetScanUI();
+    setTimeout(function() { document.getElementById('cameraInput').click(); }, 400);
   }
 
-  function nextRound() { socket.emit('round:next'); }
-  function endGame() { socket.emit('game:end'); }
-
+  // ---- CONFETTI ----
   function launchConfetti() {
-    // Win flash effect
-    var flash = document.createElement('div');
-    flash.className = 'win-flash';
-    document.body.appendChild(flash);
-    setTimeout(function() { flash.remove(); }, 700);
-    // Neon ring burst
-    var ring = document.createElement('div');
-    ring.className = 'neon-ring';
-    document.body.appendChild(ring);
-    setTimeout(function() { ring.remove(); }, 900);
-    // Use canvas confetti
-    launchCanvasConfetti('confettiCanvas');
+    var canvas = document.getElementById('confettiCanvas');
+    if (!canvas) return;
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    var ctx = canvas.getContext('2d');
+    var particles = [];
+    var colors = ['#00FFD1','#FF2D7B','#FFD700','#7C3AED','#3B82F6','#F59E0B'];
+    for (var i = 0; i < 100; i++) {
+      var angle = (Math.PI * 2 * i) / 100 + (Math.random() - 0.5) * 0.3;
+      var speed = 3 + Math.random() * 7;
+      particles.push({
+        x: canvas.width / 2, y: canvas.height / 2,
+        vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed - 3,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        size: 2 + Math.random() * 4, life: 1,
+        decay: 0.008 + Math.random() * 0.012,
+        shape: Math.random() > 0.5 ? 'c' : 'r',
+        spin: Math.random() * 0.2 - 0.1
+      });
+    }
+    var frame = 0;
+    function animate() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      var alive = false;
+      particles.forEach(function(p) {
+        if (p.life <= 0) return;
+        alive = true;
+        p.life -= p.decay; p.x += p.vx; p.y += p.vy; p.vy += 0.08; p.vx *= 0.99;
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, p.life);
+        ctx.fillStyle = p.color;
+        ctx.shadowColor = p.color; ctx.shadowBlur = 8;
+        ctx.translate(p.x, p.y); ctx.rotate(frame * p.spin);
+        if (p.shape === 'c') { ctx.beginPath(); ctx.arc(0, 0, p.size * p.life, 0, Math.PI * 2); ctx.fill(); }
+        else { ctx.fillRect(-p.size/2, -p.size/2, p.size, p.size * 0.4); }
+        ctx.restore();
+      });
+      frame++;
+      if (alive && frame < 250) requestAnimationFrame(animate);
+      else ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+    animate();
   }
 
+  // ---- BACKGROUND ----
+  function buildBG() {
+    var bg = document.getElementById('bgPattern');
+    var syms = ['東','南','西','北','發','中','萬','竹','●','一','九'];
+    var neonColors = ['rgba(0,255,209,0.3)','rgba(255,45,123,0.3)','rgba(255,215,0,0.3)','rgba(124,58,237,0.3)'];
+    for (var i = 0; i < 15; i++) {
+      var el = document.createElement('div');
+      el.className = 'tile-float';
+      el.textContent = syms[Math.floor(Math.random() * syms.length)];
+      el.style.left = Math.random()*100 + '%';
+      el.style.setProperty('--dur', (18 + Math.random()*25) + 's');
+      el.style.setProperty('--o', (0.04 + Math.random()*0.08).toFixed(2));
+      el.style.setProperty('--drift', Math.round((Math.random()-0.5)*120));
+      el.style.animationDelay = (-Math.random()*25) + 's';
+      el.style.fontSize = (28 + Math.random()*36) + 'px';
+      el.style.textShadow = '0 0 20px ' + neonColors[Math.floor(Math.random()*neonColors.length)];
+      bg.appendChild(el);
+    }
+    for (var j = 0; j < 20; j++) {
+      var p = document.createElement('div');
+      p.className = 'particle';
+      p.style.left = Math.random()*100 + '%';
+      p.style.top = Math.random()*100 + '%';
+      p.style.setProperty('--dur', (3 + Math.random()*5) + 's');
+      p.style.animationDelay = (-Math.random()*5) + 's';
+      var size = 1 + Math.random()*3;
+      p.style.width = size + 'px'; p.style.height = size + 'px';
+      p.style.background = neonColors[Math.floor(Math.random()*neonColors.length)].replace('0.3','0.6');
+      bg.appendChild(p);
+    }
+  }
+
+  // ---- TOAST ----
   function showToast(msg) {
-    const t = document.getElementById('toast');
-    t.textContent = msg;
-    t.classList.add('show');
+    var t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('show');
     setTimeout(function() { t.classList.remove('show'); }, 2500);
   }
 
-  // Button ripple effect
+  // ---- RIPPLE ----
   document.addEventListener('click', function(e) {
-    var btn = e.target.closest('.btn');
+    var btn = e.target.closest('.btn-scan, .btn-pink, .btn-outline');
     if (!btn) return;
     var rect = btn.getBoundingClientRect();
     var ripple = document.createElement('span');
@@ -2029,21 +888,19 @@
     ripple.style.width = ripple.style.height = size + 'px';
     ripple.style.left = (e.clientX - rect.left - size/2) + 'px';
     ripple.style.top = (e.clientY - rect.top - size/2) + 'px';
+    btn.style.position = 'relative'; btn.style.overflow = 'hidden';
     btn.appendChild(ripple);
     setTimeout(function() { ripple.remove(); }, 600);
   });
 
+  // ---- INIT ----
+  function init() {
+    buildBG();
+    var muteBtn = document.getElementById('muteBtn');
+    if (muteBtn && soundMuted) { muteBtn.innerHTML = '&#128263;'; }
+  }
+
   document.addEventListener('DOMContentLoaded', init);
   </script>
-
-  <!-- EMOTE BAR -->
-  <div class="emote-bar" id="emoteBar">
-    <button class="emote-btn" onclick="sendEmote('&#128079;')">&#128079;</button>
-    <button class="emote-btn" onclick="sendEmote('&#128293;')">&#128293;</button>
-    <button class="emote-btn" onclick="sendEmote('&#128561;')">&#128561;</button>
-    <button class="emote-btn" onclick="sendEmote('&#127936;')">&#127936;</button>
-    <button class="emote-btn" onclick="sendEmote('&#128514;')">&#128514;</button>
-  </div>
-
 </body>
 </html>
