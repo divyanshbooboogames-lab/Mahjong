@@ -536,18 +536,76 @@
   });
 
   // ---- AI SCAN ----
+  var serverAwake = false;
+
+  async function wakeServer() {
+    try {
+      var r = await fetch('/health', { signal: AbortSignal.timeout(5000) });
+      if (r.ok) { serverAwake = true; return true; }
+    } catch(e) {}
+    return false;
+  }
+
+  async function fetchWithRetry(url, options, maxRetries, statusEl) {
+    for (var attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        var controller = new AbortController();
+        var timeoutId = setTimeout(function() { controller.abort(); }, attempt === 1 ? 60000 : 30000);
+        options.signal = controller.signal;
+
+        if (attempt > 1) {
+          statusEl.innerHTML = '<div class="scan-status"><div class="spinner"></div><p>Retrying... (attempt ' + attempt + '/' + maxRetries + ')</p></div>';
+        }
+
+        var response = await fetch(url, options);
+        clearTimeout(timeoutId);
+        return response;
+      } catch(err) {
+        clearTimeout(timeoutId);
+        if (attempt === maxRetries) throw err;
+        // Wait before retry
+        statusEl.innerHTML = '<div class="scan-status"><div class="spinner"></div><p>Server warming up... retrying in 3s</p></div>';
+        await new Promise(function(r) { setTimeout(r, 3000); });
+      }
+    }
+  }
+
   async function scanWithAI(imageDataUrl) {
     var status = document.getElementById('scanStatus');
     var tilesGrid = document.getElementById('detectedTiles');
     var buttons = document.getElementById('scanButtons');
+    var zone = document.getElementById('cameraZone');
 
     status.style.display = 'block';
-    status.innerHTML = '<div class="scan-status"><div class="spinner"></div><p>AI is analyzing your tiles...</p></div>';
     buttons.style.display = 'none';
     tilesGrid.innerHTML = '';
 
+    // Wake server if needed (Render free tier sleeps)
+    if (!serverAwake) {
+      status.innerHTML = '<div class="scan-status"><div class="spinner"></div><p>Waking up server...</p></div>';
+      var awake = await wakeServer();
+      if (!awake) {
+        status.innerHTML = '<div class="scan-status"><div class="spinner"></div><p>Server is starting up, please wait...</p></div>';
+        // Try a few more times
+        for (var w = 0; w < 12; w++) {
+          await new Promise(function(r) { setTimeout(r, 5000); });
+          awake = await wakeServer();
+          if (awake) break;
+          status.innerHTML = '<div class="scan-status"><div class="spinner"></div><p>Server starting up... (' + (w+1)*5 + 's)</p></div>';
+        }
+        if (!awake) {
+          status.innerHTML = '<div class="scan-status" style="color:#EF4444;">&#9888; Server unavailable<br><span style="font-size:11px;opacity:0.6;">Please try again in a minute</span></div>';
+          buttons.style.display = 'flex';
+          document.getElementById('btnCalculate').style.display = 'none';
+          sfx('error');
+          return;
+        }
+      }
+    }
+
+    status.innerHTML = '<div class="scan-status"><div class="spinner"></div><p>AI is analyzing your tiles...</p></div>';
+
     // Add scan beam
-    var zone = document.getElementById('cameraZone');
     if (!zone.querySelector('.scan-beam')) {
       var beam = document.createElement('div');
       beam.className = 'scan-beam';
@@ -557,11 +615,12 @@
     sfx('scan');
 
     try {
-      var response = await fetch('/api/scan', {
+      var response = await fetchWithRetry('/api/scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ image: imageDataUrl })
-      });
+      }, 3, status);
+
       var data = await response.json();
 
       // Remove scan beam
@@ -576,6 +635,7 @@
         return;
       }
 
+      serverAwake = true;
       scannedTiles = data.tiles;
       displayTiles(data.tiles, tilesGrid);
       status.innerHTML = '<div class="scan-status" style="color:var(--neon-teal);">&#9989; Detected ' + data.count + ' tiles</div>';
@@ -586,7 +646,10 @@
     } catch (err) {
       var b2 = zone.querySelector('.scan-beam');
       if (b2) b2.remove();
-      status.innerHTML = '<div class="scan-status" style="color:#EF4444;">&#9888; Connection error<br><span style="font-size:11px;opacity:0.6;">Make sure the server is running</span></div>';
+      var errMsg = 'Scan failed';
+      var errTip = 'Check your internet connection and try again';
+      if (err.name === 'AbortError') { errMsg = 'Request timed out'; errTip = 'The server may be busy — tap Retake to try again'; }
+      status.innerHTML = '<div class="scan-status" style="color:#EF4444;">&#9888; ' + errMsg + '<br><span style="font-size:11px;opacity:0.6;">' + errTip + '</span></div>';
       buttons.style.display = 'flex';
       document.getElementById('btnCalculate').style.display = 'none';
       sfx('error');
@@ -904,6 +967,8 @@
     buildBG();
     var muteBtn = document.getElementById('muteBtn');
     if (muteBtn && soundMuted) { muteBtn.innerHTML = '&#128263;'; }
+    // Pre-wake the server in background (Render free tier cold start)
+    wakeServer();
   }
 
   document.addEventListener('DOMContentLoaded', init);

@@ -64,7 +64,8 @@ app.post('/api/scan', async (req, res) => {
 
     console.log('[AI] Scanning tile image...');
 
-    const response = await openai.chat.completions.create({
+    const response = await Promise.race([
+      openai.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
         {
@@ -106,7 +107,9 @@ A standard hand has 13-16 tiles. Scan left to right. Be precise about the suit.`
       ],
       max_tokens: 1000,
       temperature: 0.1
-    });
+    }),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('OpenAI request timed out after 45s')), 45000))
+    ]);
 
     const raw = response.choices[0].message.content.trim();
     console.log('[AI] Raw response:', raw);
@@ -141,9 +144,15 @@ A standard hand has 13-16 tiles. Scan left to right. Be precise about the suit.`
   } catch (err) {
     console.error('[AI] Error:', err.message);
     if (err.status === 401) {
-      return res.status(401).json({ success: false, error: 'Invalid OpenAI API key.' });
+      return res.status(401).json({ success: false, error: 'Invalid API key. Contact support.' });
     }
-    res.status(500).json({ success: false, error: 'AI scan failed: ' + err.message });
+    if (err.message && err.message.includes('timed out')) {
+      return res.status(504).json({ success: false, error: 'Scan took too long. Try a clearer photo with fewer tiles visible.' });
+    }
+    if (err.status === 429) {
+      return res.status(429).json({ success: false, error: 'Too many requests. Wait a moment and try again.' });
+    }
+    res.status(500).json({ success: false, error: 'Scan failed. Please try again.' });
   }
 });
 
