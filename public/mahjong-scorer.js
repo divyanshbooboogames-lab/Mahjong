@@ -164,12 +164,27 @@ function getGroupLabel(tiles) {
 }
 
 
+
+// ---- SAFETY HELPERS ----
+function safeGroups(groups) {
+  if (!Array.isArray(groups)) return [];
+  return groups.filter(function(g) {
+    return g && Array.isArray(g.tiles) && g.tiles.length > 0 && g.tiles.every(function(t) { return t != null; });
+  });
+}
+
+function safeFlatTiles(groups) {
+  return safeGroups(groups).flatMap(function(g) { return g.tiles; });
+}
+
 // ============================================================
 // EAST ROUND (PASSPORT) HAND DETECTION
 // ============================================================
 
 function detectEastRoundHand(groups) {
   const results = [];
+  groups = safeGroups(groups);
+  if (groups.length === 0) return results;
 
   const pairs = groups.filter(g => g.type === 'pair');
   const pungs = groups.filter(g => g.type === 'pung' || g.type === 'kong');
@@ -207,7 +222,7 @@ function detectEastRoundHand(groups) {
 
   // --- NEWS + 1 WIND + 3 + 3 + 3 ---
   if (threes.length >= 3) {
-    const windTiles = groups.flatMap(g => g.tiles).filter(t => t.type === 'wind');
+    const windTiles = safeFlatTiles(groups).filter(t => t.type === 'wind');
     const windValues = new Set(windTiles.map(t => t.value));
     if (windValues.size === 4) {
       results.push({ name: 'NEWS + 1 Wind', category: 'east_round' });
@@ -216,7 +231,7 @@ function detectEastRoundHand(groups) {
 
   // --- GREEN + RED + WHITE DRAGON + PAIR OF WINDS/DRAGONS + 3+3+3 ---
   {
-    const allTiles = groups.flatMap(g => g.tiles);
+    const allTiles = safeFlatTiles(groups);
     const hasDragons = DRAGONS.every(d => allTiles.some(t => t.type === 'dragon' && t.value === d));
     if (hasDragons && pairs.length >= 1) {
       const pairTile = pairs[0].tiles[0];
@@ -265,12 +280,14 @@ function detectEastRoundHand(groups) {
 
 function detectGoulashHand(groups) {
   const results = [];
+  groups = safeGroups(groups);
+  if (groups.length === 0) return results;
   const pungs = groups.filter(g => g.type === 'pung' || g.type === 'kong');
   const pairs = groups.filter(g => g.type === 'pair');
 
   if (pungs.length < 4 || pairs.length < 1) return results;
 
-  const allTiles = groups.flatMap(g => g.tiles);
+  const allTiles = safeFlatTiles(groups);
   const pungTiles = pungs.flatMap(g => g.tiles);
   const pairTile = pairs[0]?.tiles[0];
 
@@ -353,6 +370,7 @@ function scoreGoulashSet(group) {
 }
 
 function calculateGoulashScore(groups, flowers, options = {}) {
+  groups = safeGroups(groups);
   const { isEast = false, isMahjong = false, ownWind = 'east', roundWind = 'west' } = options;
 
   let basePoints = 0;
@@ -449,6 +467,7 @@ function calculateGoulashScore(groups, flowers, options = {}) {
 // ============================================================
 
 function detectDoubles(groups, flowers, options = {}) {
+  groups = safeGroups(groups);
   const { ownWind = 'east', roundWind = 'west', isMahjong = false,
           isLastTile = false, isCleanSweep = false, isConcealed = false,
           isDrawnStanding = false } = options;
@@ -503,8 +522,8 @@ function detectDoubles(groups, flowers, options = {}) {
     reasons.push('1× 3 Pungs of Dragons');
   }
 
-  // 3 Concealed Pungs
-  if (concealedPungs.length >= 3) {
+  // 3 Concealed Pungs (only if NOT 4 — 4 supersedes 3)
+  if (concealedPungs.length === 3) {
     totalDoubles += 1;
     reasons.push('1× 3 Concealed Pungs');
   }
@@ -563,8 +582,8 @@ function detectDoubles(groups, flowers, options = {}) {
     reasons.push('2× 4 Concealed Pungs');
   }
 
-  // 3 Kongs (Exposed)
-  if (exposedKongs.length >= 3) {
+  // 3 Exposed Kongs (only if NOT 4 — 4 supersedes 3)
+  if (exposedKongs.length === 3) {
     totalDoubles += 2;
     reasons.push('2× 3 Exposed Kongs');
   }
@@ -573,22 +592,29 @@ function detectDoubles(groups, flowers, options = {}) {
 
   // All Honour Hand
   {
-    const allTiles = groups.flatMap(g => g.tiles);
+    const allTiles = safeFlatTiles(groups);
     if (allTiles.length > 0 && allTiles.every(t => isHonour(t))) {
       totalDoubles += 3;
       reasons.push('3× All Honour Hand');
     }
   }
 
-  // One Suit Hand Clean
+  // One Suit Hand Clean (3 doubles) OR Clean Suit with Terminals (4 doubles)
+  // Terminals version SUPERSEDES clean — they don't stack
   {
-    const suitedTiles = groups.flatMap(g => g.tiles).filter(t => isSuited(t));
-    const honourTiles = groups.flatMap(g => g.tiles).filter(t => isHonour(t));
-    if (suitedTiles.length > 0 && honourTiles.length === 0) {
-      const suits = new Set(suitedTiles.map(t => t.suit));
+    const allSuitedTiles = safeFlatTiles(groups).filter(t => isSuited(t));
+    const allHonourTiles = safeFlatTiles(groups).filter(t => isHonour(t));
+    if (allSuitedTiles.length > 0 && allHonourTiles.length === 0) {
+      const suits = new Set(allSuitedTiles.map(t => t.suit));
       if (suits.size === 1) {
-        totalDoubles += 3;
-        reasons.push('3× One Suit Hand Clean');
+        const hasTerminals = allSuitedTiles.some(t => t.value === 1) && allSuitedTiles.some(t => t.value === 9);
+        if (hasTerminals) {
+          totalDoubles += 4;
+          reasons.push('4× Clean Suit Hand with Terminals');
+        } else {
+          totalDoubles += 3;
+          reasons.push('3× One Suit Hand Clean');
+        }
       }
     }
   }
@@ -599,31 +625,19 @@ function detectDoubles(groups, flowers, options = {}) {
     reasons.push('3× Concealed Mahjong');
   }
 
-  // 3 Concealed Kongs
-  if (concealedKongs.length >= 3) {
+  // 3 Concealed Kongs (only if NOT 4 — 4 supersedes 3)
+  if (concealedKongs.length === 3) {
     totalDoubles += 3;
     reasons.push('3× 3 Concealed Kongs');
   }
 
-  // 4 Exposed Kongs
+  // 4 Exposed Kongs (only if NOT 3 exposed — 4 supersedes 3)
   if (exposedKongs.length >= 4) {
     totalDoubles += 3;
     reasons.push('3× 4 Exposed Kongs');
   }
 
   // --- 4 DOUBLES ---
-  // Clean suit with terminals
-  {
-    const suitedTiles = groups.flatMap(g => g.tiles).filter(t => isSuited(t));
-    const honourTiles = groups.flatMap(g => g.tiles).filter(t => isHonour(t));
-    if (suitedTiles.length > 0 && honourTiles.length === 0) {
-      const suits = new Set(suitedTiles.map(t => t.suit));
-      if (suits.size === 1 && suitedTiles.some(t => t.value === 1) && suitedTiles.some(t => t.value === 9)) {
-        totalDoubles += 4;
-        reasons.push('4× Clean Suit Hand with Terminals');
-      }
-    }
-  }
 
   // 4 Concealed Kongs
   if (concealedKongs.length >= 4) {
@@ -827,6 +841,8 @@ function detectFlowerDoubles(flowers, ownWind, roundWind) {
 // ============================================================
 
 function analyzeHand(groups, flowers = [], options = {}) {
+  groups = safeGroups(groups);
+  if (!Array.isArray(flowers)) flowers = [];
   const { ownWind = 'east', roundWind = 'west', isEast = false,
           isMahjong = true, isLastTile = false, isCleanSweep = false,
           isConcealed = false, isDrawnStanding = false, gameMode = 'east_round' } = options;
@@ -841,20 +857,36 @@ function analyzeHand(groups, flowers = [], options = {}) {
     ownWind, roundWind, isMahjong, isLastTile, isCleanSweep, isConcealed, isDrawnStanding
   });
 
+  // Add Goulash hand doubles (e.g., "4 Pungs in One Suit Only" = 3 doubles)
+  // These are detected by detectGoulashHand but must be added to doublesResult
+  let handDoubles = 0;
+  const handDoubleReasons = [];
+  if (gameMode === 'goulash' && goulashHands.length > 0) {
+    // Pick the best (highest doubles) Goulash hand
+    const bestHand = goulashHands.reduce((best, h) => (h.doubles || 0) > (best.doubles || 0) ? h : best, goulashHands[0]);
+    if (bestHand.doubles > 0) {
+      handDoubles = bestHand.doubles;
+      handDoubleReasons.push(`${bestHand.doubles}× ${bestHand.name}`);
+    }
+  }
+
+  const baseDoublesTotal = doublesResult.totalDoubles + handDoubles;
+  const baseDoubleReasons = [...doublesResult.reasons, ...handDoubleReasons];
+
   const flowerScore = scoreFlowers(flowers, ownWind, roundWind);
   const flowerDoublesResult = detectFlowerDoubles(flowers, ownWind, roundWind);
 
   // === FLOWER DUAL-USE: Calculate BOTH paths, pick higher score ===
   // Path A: Flowers as POINTS (500/1000 bonuses added to final)
   let scoreA = goulashScore.basePoints;
-  scoreA = lookupScoringCard(scoreA, doublesResult.totalDoubles);
+  scoreA = lookupScoringCard(scoreA, baseDoublesTotal);
   if (isEast) scoreA *= 2;
   scoreA += flowerScore.points;
   const limitA = applyLimits(scoreA, isEast);
 
   // Path B: Flowers as DOUBLES (forfeit point bonuses, gain extra doubles)
   let scoreB = goulashScore.basePoints;
-  const totalDoublesB = doublesResult.totalDoubles + flowerDoublesResult.totalDoubles;
+  const totalDoublesB = baseDoublesTotal + flowerDoublesResult.totalDoubles;
   scoreB = lookupScoringCard(scoreB, totalDoublesB);
   if (isEast) scoreB *= 2;
   // No flower points added — they're used as doubles
@@ -866,11 +898,11 @@ function analyzeHand(groups, flowers = [], options = {}) {
   const finalLimitName = useFlowerDoubles ? limitB.limitName : limitA.limitName;
   const finalLimits = useFlowerDoubles ? limitB.limits : limitA.limits;
   const finalDoubles = useFlowerDoubles
-    ? doublesResult.totalDoubles + flowerDoublesResult.totalDoubles
-    : doublesResult.totalDoubles;
+    ? baseDoublesTotal + flowerDoublesResult.totalDoubles
+    : baseDoublesTotal;
   const finalDoubleReasons = useFlowerDoubles
-    ? [...doublesResult.reasons, ...flowerDoublesResult.reasons]
-    : doublesResult.reasons;
+    ? [...baseDoubleReasons, ...flowerDoublesResult.reasons]
+    : baseDoubleReasons;
   const finalFlowerPoints = useFlowerDoubles ? 0 : flowerScore.points;
   const finalFlowerDetails = useFlowerDoubles
     ? ['Flowers used as doubles (higher score)']
@@ -913,6 +945,7 @@ if (typeof window !== 'undefined') {
     detectEastRoundHand, detectGoulashHand,
     calculateGoulashScore, detectDoubles, detectFlowerDoubles, scoreFlowers,
     analyzeHand, lookupScoringCard, applyLimits,
+    safeGroups, safeFlatTiles,
     SUITS, SUIT_LABELS, WINDS, DRAGONS, HONOURS
   };
 }

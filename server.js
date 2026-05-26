@@ -19,7 +19,7 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false
 }));
 
-app.use(express.json({ limit: '50mb' }));
+app.use(express.json({ limit: '15mb' }));
 
 // Rate limiting — general (100 req/min)
 app.use(rateLimit({
@@ -54,8 +54,18 @@ app.post('/api/scan', async (req, res) => {
   try {
     const { image } = req.body;
 
-    if (!image) {
+    if (!image || typeof image !== 'string') {
       return res.status(400).json({ success: false, error: 'No image provided' });
+    }
+
+    // Validate image is a data URL (not a remote URL — prevents SSRF)
+    if (!image.startsWith('data:image/')) {
+      return res.status(400).json({ success: false, error: 'Invalid image format. Must be a data URL.' });
+    }
+
+    // Reject excessively large images (>10MB base64 ~ 7.5MB raw)
+    if (image.length > 10 * 1024 * 1024) {
+      return res.status(413).json({ success: false, error: 'Image too large. Take a photo at lower resolution.' });
     }
 
     if (!process.env.OPENAI_API_KEY) {
@@ -81,9 +91,9 @@ Output formats:
 - Flower: {"type":"flower","set":1|2,"value":1-4}
 
 CRITICAL — How to distinguish the 3 suits:
-1. CHARACTERS (萬子/Wan): Each tile has a CHINESE NUMERAL (一二三四五六七八九) written on top, with the character 萬 (ten-thousand) written below it in red/black. The key identifier is the 萬 character at the bottom.
-2. BAMBOO (索子/Suo): Each tile shows GREEN STICKS or RODS bundled together. Count the sticks to get the value. 1-Bamboo is special — it looks like a bird (peacock/sparrow), NOT a stick.
-3. CIRCLES (筒子/Tong): Each tile shows COLORED CIRCLES/DOTS arranged in patterns. Count the circles to get the value. They look like coins or wheels.
+1. CHARACTERS: Each tile has a CHINESE NUMERAL written on top, with the character 萬 (ten-thousand) written below it in red/black. The key identifier is the 萬 character at the bottom.
+2. BAMBOO: Each tile shows GREEN STICKS or RODS bundled together. Count the sticks to get the value. 1-Bamboo is special — it looks like a bird (peacock/sparrow), NOT a stick.
+3. CIRCLES: Each tile shows COLORED CIRCLES/DOTS arranged in patterns. Count the circles to get the value. They look like coins or wheels.
 
 DO NOT confuse suits. If you see 萬 character → characters. If you see sticks/rods → bamboo. If you see circular dots → circles.
 
@@ -134,7 +144,7 @@ A standard hand has 13-16 tiles. Scan left to right. Be precise about the suit.`
       if (t.type === 'wind') return ['east','south','west','north'].includes(t.value);
       if (t.type === 'dragon') return ['green','red','white'].includes(t.value);
       if (t.type === 'flower') return [1,2].includes(t.set) && Number.isInteger(t.value) && t.value >= 1 && t.value <= 4;
-      if (t.suit) return ['characters','bamboo','circles'].includes(t.suit) && t.value >= 1 && t.value <= 9;
+      if (t.suit) return ['characters','bamboo','circles'].includes(t.suit) && Number.isInteger(t.value) && t.value >= 1 && t.value <= 9;
       return false;
     });
 

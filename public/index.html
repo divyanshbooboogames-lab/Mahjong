@@ -187,18 +187,42 @@
 
     /* Detected tiles */
     .tiles-grid {
-      display: flex; flex-wrap: wrap; gap: 6px; justify-content: center;
+      display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;
       padding: 16px 0;
     }
+    .tile-group {
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+      cursor: pointer; user-select: none; transition: transform 0.15s;
+    }
+    .tile-group:active { transform: scale(0.95); }
+    .tile-group-tiles {
+      display: flex; gap: 3px;
+    }
+    .tile-group-label {
+      font-size: 9px; font-weight: 600; padding: 2px 8px; border-radius: 10px;
+      text-transform: uppercase; letter-spacing: 0.5px; transition: all 0.2s;
+    }
+    .tile-group-label.exposed { background: rgba(239,68,68,0.25); color: #FF6B6B; }
+    .tile-group-label.concealed { background: rgba(0,255,209,0.2); color: #00FFD1; }
     .tile-chip {
-      width: 46px; height: 58px; border: 2px solid rgba(255,255,255,0.2);
+      width: 42px; height: 54px; border: 2px solid rgba(255,255,255,0.2);
       border-radius: 8px; background: rgba(255,255,255,0.08);
       display: flex; align-items: center; justify-content: center;
       flex-direction: column; padding: 4px 2px;
       font-size: 18px; font-weight: 700;
       animation: tileFlip 0.4s ease backwards;
+      transition: all 0.2s;
     }
+    .tile-chip.face-down {
+      background: linear-gradient(135deg, #1a365d, #2d3748);
+      border-color: rgba(0,255,209,0.3);
+    }
+    .tile-chip.face-down span { visibility: hidden; }
     @keyframes tileFlip { from { transform: rotateY(90deg); opacity: 0; } to { transform: rotateY(0); opacity: 1; } }
+    .group-hint {
+      text-align: center; font-size: 10px; color: rgba(255,255,255,0.4);
+      padding: 2px 0 8px; font-style: italic;
+    }
 
     .scan-status {
       text-align: center; padding: 20px; color: var(--neon-teal);
@@ -371,6 +395,7 @@
 
         <div id="scanStatus" style="display:none;"></div>
         <div class="tiles-grid" id="detectedTiles"></div>
+        <div class="group-hint" id="groupHint" style="display:none;">Tap a group to toggle exposed / concealed</div>
 
         <div class="btn-row" id="scanButtons" style="display:none;">
           <button class="btn-pink" id="btnCalculate" onclick="calculateScore()">&#127942; CALCULATE</button>
@@ -410,6 +435,13 @@
   <script>
   var CHAR_MAP = { characters:['','一','二','三','四','五','六','七','八','九'], winds:{east:'東',south:'南',west:'西',north:'北'}, dragons:{green:'發',red:'中',white:'B'} };
 
+  // HTML entity escaper to prevent XSS from AI-returned data
+  function escHTML(str) {
+    var d = document.createElement('div');
+    d.textContent = String(str);
+    return d.innerHTML;
+  }
+
   // ---- STATE ----
   var settings = {
     gameMode: 'east_round',
@@ -427,6 +459,7 @@
   var soundMuted = false;
   function getAudioCtx() {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
     return audioCtx;
   }
   function playTone(freq, dur, type, vol) {
@@ -516,6 +549,8 @@
     if (beam) beam.remove();
     document.getElementById('cameraInput').value = '';
     scannedTiles = null;
+    scannedGroups = [];
+    var hint = document.getElementById('groupHint'); if (hint) hint.style.display = 'none';
   }
 
   document.getElementById('cameraInput').addEventListener('change', function() {
@@ -556,6 +591,11 @@
         ctx.drawImage(img, 0, 0, w, h);
         resolve(canvas.toDataURL('image/jpeg', quality));
       };
+      // Fallback: if image fails to load (corrupt/unsupported), send original
+      img.onerror = function() {
+        console.warn('[COMPRESS] Image load failed, sending original');
+        resolve(dataUrl);
+      };
       img.src = dataUrl;
     });
   }
@@ -575,6 +615,12 @@
 
         var response = await fetch(url, options);
         clearTimeout(timeoutId);
+        // Retry on server errors (5xx) and rate limits (429)
+        if ((response.status >= 500 || response.status === 429) && attempt < maxRetries) {
+          statusEl.innerHTML = '<div class="scan-status"><div class="spinner"></div><p>Server busy, retrying in 3s...</p></div>';
+          await new Promise(function(r) { setTimeout(r, 3000); });
+          continue;
+        }
         return response;
       } catch(err) {
         clearTimeout(timeoutId);
@@ -636,7 +682,7 @@
         if (data.error && data.error.includes('API key')) tip = 'Server configuration issue — contact support';
         if (data.error && data.error.includes('rate limit')) tip = 'Wait a moment before scanning again';
         if (data.error && data.error.includes('timed out')) tip = 'Try a clearer photo with fewer tiles';
-        status.innerHTML = '<div class="scan-status" style="color:#EF4444;">&#9888; ' + (data.error || 'Scan failed') + '<br><span style="font-size:11px;opacity:0.6;">' + tip + '</span></div>';
+        status.innerHTML = '<div class="scan-status" style="color:#EF4444;">&#9888; ' + escHTML(data.error || 'Scan failed') + '<br><span style="font-size:11px;opacity:0.6;">' + escHTML(tip) + '</span></div>';
         buttons.style.display = 'flex';
         document.getElementById('btnCalculate').style.display = 'none';
         sfx('error');
@@ -644,7 +690,12 @@
       }
 
       scannedTiles = data.tiles;
-      displayTiles(data.tiles, tilesGrid);
+      try {
+        displayTiles(data.tiles, tilesGrid);
+      } catch (displayErr) {
+        console.error('[DISPLAY] Error:', displayErr);
+        tilesGrid.innerHTML = '<div style="color:#F9A8D4;text-align:center;padding:10px;font-size:12px;">Detected ' + data.count + ' tiles (display error — tap Calculate to score anyway)</div>';
+      }
       status.innerHTML = '<div class="scan-status" style="color:var(--neon-teal);">&#9989; Detected ' + data.count + ' tiles</div>';
       buttons.style.display = 'flex';
       document.getElementById('btnCalculate').style.display = 'block';
@@ -663,23 +714,132 @@
     }
   }
 
-  function displayTiles(tiles, container) {
+  function tileChipHTML(t, faceDown) {
+    var sym = '', label = '', col = '#E0E0E0';
+    if (t.suit === 'characters') { sym = CHAR_MAP.characters[t.value] || '?'; label = t.value + ' Char'; col = '#FF6B6B'; }
+    else if (t.suit === 'bamboo') { sym = t.value; label = t.value + ' Bam'; col = '#00FFD1'; }
+    else if (t.suit === 'circles') { sym = t.value; label = t.value + ' Dot'; col = '#6BC5FF'; }
+    else if (t.type === 'wind') { sym = CHAR_MAP.winds[t.value] || '?'; label = (t.value || '?').charAt(0).toUpperCase() + ' Wind'; col = '#E0E0E0'; }
+    else if (t.type === 'dragon') { sym = CHAR_MAP.dragons[t.value] || '?'; label = (t.value || '?').charAt(0).toUpperCase() + ' Drg'; col = t.value === 'green' ? '#00FFD1' : t.value === 'white' ? '#E0E0E0' : '#FF6B6B'; }
+    else if (t.type === 'flower') { sym = '\u{1F338}'; label = 'Flower'; col = '#F9A8D4'; }
+    // Escape all dynamic values to prevent XSS from AI response data
+    sym = escHTML(sym);
+    label = escHTML(label);
+    var cls = 'tile-chip' + (faceDown ? ' face-down' : '');
+    return '<div class="' + cls + '" style="color:' + col + ';"><span style="font-size:16px;display:block;line-height:1.1;">' + sym + '</span><span style="font-size:7px;opacity:0.7;display:block;line-height:1;margin-top:2px;color:' + col + ';">' + label + '</span></div>';
+  }
+
+  // Store grouped tiles for scoring
+  var scannedGroups = [];
+
+  function displayGroupedTiles(tiles, container) {
     container.innerHTML = '';
-    tiles.forEach(function(t, i) {
-      var el = document.createElement('div');
-      el.className = 'tile-chip';
-      el.style.animationDelay = (i * 0.05) + 's';
-      var sym = '', label = '', col = '#E0E0E0';
-      if (t.suit === 'characters') { sym = CHAR_MAP.characters[t.value]; label = t.value + ' Char'; col = '#FF6B6B'; }
-      else if (t.suit === 'bamboo') { sym = t.value; label = t.value + ' Bam'; col = '#00FFD1'; }
-      else if (t.suit === 'circles') { sym = t.value; label = t.value + ' Dot'; col = '#6BC5FF'; }
-      else if (t.type === 'wind') { sym = CHAR_MAP.winds[t.value]; label = t.value.charAt(0).toUpperCase() + ' Wind'; col = '#E0E0E0'; }
-      else if (t.type === 'dragon') { sym = CHAR_MAP.dragons[t.value]; label = t.value.charAt(0).toUpperCase() + ' Drg'; col = t.value === 'green' ? '#00FFD1' : t.value === 'white' ? '#E0E0E0' : '#FF6B6B'; }
-      else if (t.type === 'flower') { sym = '\u{1F338}'; label = 'Flower'; col = '#F9A8D4'; }
-      el.style.color = col;
-      el.innerHTML = '<span style="font-size:18px;display:block;line-height:1.1;">' + sym + '</span><span style="font-size:8px;opacity:0.7;display:block;line-height:1;margin-top:2px;color:' + col + ';">' + label + '</span>';
-      container.appendChild(el);
+    var MS = window.MahjongScorer;
+    if (!MS) return;
+
+    scannedGroups = autoGroupTiles(tiles);
+    var flowers = tiles.filter(function(t) { return t.type === 'flower'; });
+
+    scannedGroups.forEach(function(group, gi) {
+      var groupEl = document.createElement('div');
+      groupEl.className = 'tile-group';
+      groupEl.setAttribute('data-group-index', gi);
+      groupEl.style.animationDelay = (gi * 0.1) + 's';
+
+      var tilesRow = document.createElement('div');
+      tilesRow.className = 'tile-group-tiles';
+
+      // For concealed groups: show first tile face-down (like the rulebook convention)
+      group.tiles.forEach(function(t, ti) {
+        var faceDown = !group.exposed && ti === 0 && group.tiles.length > 2;
+        tilesRow.innerHTML += tileChipHTML(t, faceDown);
+      });
+
+      var labelEl = document.createElement('div');
+      labelEl.className = 'tile-group-label ' + (group.exposed ? 'exposed' : 'concealed');
+      labelEl.textContent = group.exposed ? 'EXPOSED' : 'CONCEALED';
+
+      groupEl.appendChild(tilesRow);
+      groupEl.appendChild(labelEl);
+
+      // Toggle on tap
+      groupEl.addEventListener('click', function() {
+        group.exposed = !group.exposed;
+        labelEl.className = 'tile-group-label ' + (group.exposed ? 'exposed' : 'concealed');
+        labelEl.textContent = group.exposed ? 'EXPOSED' : 'CONCEALED';
+        // Re-render tiles in this group
+        tilesRow.innerHTML = '';
+        group.tiles.forEach(function(t, ti) {
+          var faceDown = !group.exposed && ti === 0 && group.tiles.length > 2;
+          tilesRow.innerHTML += tileChipHTML(t, faceDown);
+        });
+        sfx('click');
+      });
+
+      container.appendChild(groupEl);
     });
+
+    // Show flowers separately (not toggleable)
+    if (flowers.length > 0) {
+      var flowerGroup = document.createElement('div');
+      flowerGroup.className = 'tile-group';
+      var flowerRow = document.createElement('div');
+      flowerRow.className = 'tile-group-tiles';
+      flowers.forEach(function(f) { flowerRow.innerHTML += tileChipHTML(f, false); });
+      var flowerLabel = document.createElement('div');
+      flowerLabel.className = 'tile-group-label exposed';
+      flowerLabel.textContent = 'FLOWERS';
+      flowerGroup.appendChild(flowerRow);
+      flowerGroup.appendChild(flowerLabel);
+      container.appendChild(flowerGroup);
+    }
+
+    document.getElementById('groupHint').style.display = scannedGroups.length > 0 ? 'block' : 'none';
+  }
+
+  // Backwards compat: simple flat display
+  function displayTiles(tiles, container) {
+    displayGroupedTiles(tiles, container);
+  }
+
+  // Read-only tile display for results screen (no toggle handlers)
+  function displayTilesReadonly(tiles, container) {
+    container.innerHTML = '';
+    var MS = window.MahjongScorer;
+    if (!MS) return;
+    var groups = scannedGroups.length > 0 ? scannedGroups : autoGroupTiles(tiles);
+    var flowers = tiles.filter(function(t) { return t.type === 'flower'; });
+    groups.forEach(function(group) {
+      var groupEl = document.createElement('div');
+      groupEl.className = 'tile-group';
+      groupEl.style.cursor = 'default';
+      var tilesRow = document.createElement('div');
+      tilesRow.className = 'tile-group-tiles';
+      group.tiles.forEach(function(t, ti) {
+        var faceDown = !group.exposed && ti === 0 && group.tiles.length > 2;
+        tilesRow.innerHTML += tileChipHTML(t, faceDown);
+      });
+      var labelEl = document.createElement('div');
+      labelEl.className = 'tile-group-label ' + (group.exposed ? 'exposed' : 'concealed');
+      labelEl.textContent = group.exposed ? 'EXPOSED' : 'CONCEALED';
+      groupEl.appendChild(tilesRow);
+      groupEl.appendChild(labelEl);
+      container.appendChild(groupEl);
+    });
+    if (flowers.length > 0) {
+      var flowerGroup = document.createElement('div');
+      flowerGroup.className = 'tile-group';
+      flowerGroup.style.cursor = 'default';
+      var flowerRow = document.createElement('div');
+      flowerRow.className = 'tile-group-tiles';
+      flowers.forEach(function(f) { flowerRow.innerHTML += tileChipHTML(f, false); });
+      var flowerLabel = document.createElement('div');
+      flowerLabel.className = 'tile-group-label exposed';
+      flowerLabel.textContent = 'FLOWERS';
+      flowerGroup.appendChild(flowerRow);
+      flowerGroup.appendChild(flowerLabel);
+      container.appendChild(flowerGroup);
+    }
   }
 
   function retake() {
@@ -694,19 +854,31 @@
     if (!MS) { showToast('Scoring engine not loaded. Refresh.'); return; }
 
     readSettings();
-    var groups = autoGroupTiles(scannedTiles);
+
+    // Use the grouped tiles with user-toggled exposed/concealed states
+    var groups = scannedGroups.length > 0 ? scannedGroups : autoGroupTiles(scannedTiles);
     var flowers = scannedTiles.filter(function(t) { return t.type === 'flower'; });
 
-    var result = MS.analyzeHand(groups, flowers, {
-      ownWind: settings.seatWind,
-      roundWind: settings.roundWind,
-      isEast: settings.seatWind === 'east',
-      isMahjong: settings.isMahjong,
-      isConcealed: settings.isConcealed,
-      gameMode: settings.gameMode
-    });
+    // Determine if hand is fully concealed (no exposed groups)
+    var allConcealed = groups.every(function(g) { return !g.exposed; });
 
-    showResults(result);
+    try {
+      var result = MS.analyzeHand(groups, flowers, {
+        ownWind: settings.seatWind,
+        roundWind: settings.roundWind,
+        isEast: settings.seatWind === 'east',
+        isMahjong: settings.isMahjong,
+        isConcealed: allConcealed,
+        isLastTile: settings.isLastTile || false,
+        isCleanSweep: settings.isCleanSweep || false,
+        gameMode: settings.gameMode
+      });
+
+      showResults(result);
+    } catch (err) {
+      console.error('[SCORE] Error:', err);
+      showToast('Scoring error. Try retaking the photo.');
+    }
   }
 
   function autoGroupTiles(tiles) {
@@ -811,8 +983,8 @@
       lb.style.display = 'none';
     }
 
-    // Show tiles preview
-    displayTiles(scannedTiles, document.getElementById('tilesPreview'));
+    // Show tiles preview (read-only, no toggle handlers)
+    displayTilesReadonly(scannedTiles, document.getElementById('tilesPreview'));
 
     // Breakdown
     var bd = document.getElementById('breakdown');
@@ -837,7 +1009,9 @@
     }
 
     if (settings.isMahjong) rows.push({ label: 'Mahjong', value: 'Yes' });
-    if (settings.isConcealed) rows.push({ label: 'Concealed Hand', value: 'Yes' });
+    // Show actual concealed state from groups, not the settings toggle
+    var wasConcealed = scannedGroups.length > 0 && scannedGroups.every(function(g) { return !g.exposed; });
+    if (wasConcealed) rows.push({ label: 'Concealed Hand', value: 'Yes' });
     rows.push({ label: 'Seat Wind', value: settings.seatWind.charAt(0).toUpperCase() + settings.seatWind.slice(1) });
     rows.push({ label: 'Round Wind', value: settings.roundWind.charAt(0).toUpperCase() + settings.roundWind.slice(1) });
 
@@ -845,7 +1019,7 @@
       var row = document.createElement('div');
       row.className = 'breakdown-row';
       row.style.animationDelay = (0.2 + i * 0.08) + 's';
-      row.innerHTML = '<span class="label">' + r.label + '</span><span class="value' + (r.gold ? ' gold' : '') + '">' + r.value + '</span>';
+      row.innerHTML = '<span class="label">' + escHTML(r.label) + '</span><span class="value' + (r.gold ? ' gold' : '') + '">' + escHTML(r.value) + '</span>';
       bd.appendChild(row);
     });
 
@@ -917,7 +1091,7 @@
   // ---- BACKGROUND ----
   function buildBG() {
     var bg = document.getElementById('bgPattern');
-    var syms = ['東','南','西','北','發','中','萬','竹','●','一','九'];
+    var syms = ['\u6771','\u5357','\u897f','\u5317','\u767c','\u4e2d','\u842c','\u7af9','\u25cf','\u4e00','\u4e5d'];
     var neonColors = ['rgba(0,255,209,0.3)','rgba(255,45,123,0.3)','rgba(255,215,0,0.3)','rgba(124,58,237,0.3)'];
     for (var i = 0; i < 15; i++) {
       var el = document.createElement('div');
@@ -947,10 +1121,12 @@
   }
 
   // ---- TOAST ----
+  var _toastTimer = null;
   function showToast(msg) {
     var t = document.getElementById('toast');
+    if (_toastTimer) clearTimeout(_toastTimer);
     t.textContent = msg; t.classList.add('show');
-    setTimeout(function() { t.classList.remove('show'); }, 2500);
+    _toastTimer = setTimeout(function() { t.classList.remove('show'); _toastTimer = null; }, 2500);
   }
 
   // ---- RIPPLE ----
@@ -969,6 +1145,14 @@
     setTimeout(function() { ripple.remove(); }, 600);
   });
 
+  // ---- GLOBAL ERROR HANDLER ----
+  window.onerror = function(msg, url, line) {
+    console.error('[GLOBAL]', msg, url, line);
+    var toast = document.getElementById('toast');
+    if (toast) { toast.textContent = 'Something went wrong. Try again.'; toast.classList.add('show'); setTimeout(function() { toast.classList.remove('show'); }, 3000); }
+    return true;
+  };
+
   // ---- INIT ----
   function init() {
     buildBG();
@@ -977,7 +1161,7 @@
     // Ready
   }
 
-  document.addEventListener('DOMContentLoaded', init);
+  init();
   </script>
 </body>
 </html>
