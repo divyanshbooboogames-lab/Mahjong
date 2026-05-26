@@ -779,6 +779,24 @@
       container.appendChild(groupEl);
     });
 
+    // Show leftover (ungrouped) tiles with warning styling
+    var leftover = scannedGroups._leftover || [];
+    if (leftover.length > 0) {
+      var leftoverGroup = document.createElement('div');
+      leftoverGroup.className = 'tile-group';
+      var leftoverRow = document.createElement('div');
+      leftoverRow.className = 'tile-group-tiles';
+      leftover.forEach(function(t) { leftoverRow.innerHTML += tileChipHTML(t, false); });
+      var leftoverLabel = document.createElement('div');
+      leftoverLabel.className = 'tile-group-label';
+      leftoverLabel.style.background = 'rgba(239,68,68,0.25)';
+      leftoverLabel.style.color = '#FF6B6B';
+      leftoverLabel.textContent = 'UNGROUPED';
+      leftoverGroup.appendChild(leftoverRow);
+      leftoverGroup.appendChild(leftoverLabel);
+      container.appendChild(leftoverGroup);
+    }
+
     // Show flowers separately (not toggleable)
     if (flowers.length > 0) {
       var flowerGroup = document.createElement('div');
@@ -821,11 +839,29 @@
       });
       var labelEl = document.createElement('div');
       labelEl.className = 'tile-group-label ' + (group.exposed ? 'exposed' : 'concealed');
-      labelEl.textContent = group.exposed ? 'EXPOSED' : 'CONCEALED';
+      labelEl.textContent = (group.exposed ? 'EXPOSED' : 'CONCEALED') + ' ' + (MS.getGroupLabel ? MS.getGroupLabel(group.tiles) : '');
       groupEl.appendChild(tilesRow);
       groupEl.appendChild(labelEl);
       container.appendChild(groupEl);
     });
+    // Show leftover tiles
+    var leftover = groups._leftover || [];
+    if (leftover.length > 0) {
+      var leftoverGroup = document.createElement('div');
+      leftoverGroup.className = 'tile-group';
+      leftoverGroup.style.cursor = 'default';
+      var leftoverRow = document.createElement('div');
+      leftoverRow.className = 'tile-group-tiles';
+      leftover.forEach(function(t) { leftoverRow.innerHTML += tileChipHTML(t, false); });
+      var leftoverLabel = document.createElement('div');
+      leftoverLabel.className = 'tile-group-label';
+      leftoverLabel.style.background = 'rgba(239,68,68,0.25)';
+      leftoverLabel.style.color = '#FF6B6B';
+      leftoverLabel.textContent = 'UNGROUPED';
+      leftoverGroup.appendChild(leftoverRow);
+      leftoverGroup.appendChild(leftoverLabel);
+      container.appendChild(leftoverGroup);
+    }
     if (flowers.length > 0) {
       var flowerGroup = document.createElement('div');
       flowerGroup.className = 'tile-group';
@@ -848,6 +884,8 @@
   }
 
   // ---- SCORING ----
+  var lastValidation = null; // Store validation for results screen
+
   function calculateScore() {
     if (!scannedTiles || scannedTiles.length === 0) { showToast('No tiles to score'); return; }
     var MS = window.MahjongScorer;
@@ -858,6 +896,17 @@
     // Use the grouped tiles with user-toggled exposed/concealed states
     var groups = scannedGroups.length > 0 ? scannedGroups : autoGroupTiles(scannedTiles);
     var flowers = scannedTiles.filter(function(t) { return t.type === 'flower'; });
+    var nonFlowerCount = scannedTiles.length - flowers.length;
+
+    // Validate the hand
+    var validation = MS.validateHand(groups, nonFlowerCount);
+    lastValidation = validation;
+
+    // If Mahjong is toggled on but hand is incomplete, warn and auto-disable
+    var effectiveMahjong = settings.isMahjong;
+    if (settings.isMahjong && !validation.isComplete) {
+      effectiveMahjong = false;
+    }
 
     // Determine if hand is fully concealed (no exposed groups)
     var allConcealed = groups.every(function(g) { return !g.exposed; });
@@ -867,12 +916,17 @@
         ownWind: settings.seatWind,
         roundWind: settings.roundWind,
         isEast: settings.seatWind === 'east',
-        isMahjong: settings.isMahjong,
+        isMahjong: effectiveMahjong,
         isConcealed: allConcealed,
         isLastTile: settings.isLastTile || false,
         isCleanSweep: settings.isCleanSweep || false,
         gameMode: settings.gameMode
       });
+
+      // Attach validation to result for display
+      result.validation = validation;
+      result.effectiveMahjong = effectiveMahjong;
+      result.mahjongOverridden = settings.isMahjong && !effectiveMahjong;
 
       showResults(result);
     } catch (err) {
@@ -959,19 +1013,41 @@
       }
     }
 
+    // Collect leftover (ungrouped) tiles
+    var leftover = [];
+    for (var li = 0; li < sorted.length; li++) {
+      if (!used[li]) leftover.push(sorted[li]);
+    }
+
+    // Store leftover tiles on the groups array for access
+    groups._leftover = leftover;
+    groups._totalNonFlower = handTiles.length;
     return groups;
   }
 
   // ---- SHOW RESULTS ----
   function showResults(result) {
     showScreen('screenResults');
-    sfx('win');
 
     var score = result.scoring.finalScore;
+    var validation = result.validation || {};
+    var hasWarnings = validation.warnings && validation.warnings.length > 0;
+
     document.getElementById('scoreNumber').textContent = score.toLocaleString();
 
-    var handName = result.hands && result.hands.length > 0 ? result.hands[0].name : 'Standard Hand';
+    // Hand name: only show recognized names, not "Standard Hand" for incomplete
+    var handName = '';
+    if (result.hands && result.hands.length > 0) {
+      handName = result.hands[0].name;
+    } else if (validation.isComplete) {
+      handName = 'Standard Hand (4 Sets + 1 Pair)';
+    } else {
+      handName = 'Incomplete Hand';
+    }
     document.getElementById('handName').textContent = handName;
+    // Color the hand name red if incomplete
+    var hnEl = document.getElementById('handName');
+    hnEl.style.color = validation.isComplete ? 'var(--neon-teal)' : '#FF6B6B';
 
     // Limit badge
     var lb = document.getElementById('limitBadge');
@@ -983,6 +1059,9 @@
       lb.style.display = 'none';
     }
 
+    // Play sound based on completeness
+    if (validation.isComplete) { sfx('win'); } else { sfx('click'); }
+
     // Show tiles preview (read-only, no toggle handlers)
     displayTilesReadonly(scannedTiles, document.getElementById('tilesPreview'));
 
@@ -991,35 +1070,96 @@
     bd.innerHTML = '<div class="breakdown-title">SCORE BREAKDOWN</div>';
 
     var rows = [];
-    rows.push({ label: 'Base Score', value: result.scoring.basePoints || 0 });
-    rows.push({ label: 'Total Doubles', value: result.scoring.doubles || 0, gold: true });
 
-    if (result.hands) {
-      result.hands.forEach(function(h) {
-        if (h.doubles > 0) rows.push({ label: h.name, value: '+' + h.doubles + ' double' + (h.doubles > 1 ? 's' : '') });
-        else rows.push({ label: h.name, value: 'Detected' });
+    // Validation warnings at the top
+    if (hasWarnings) {
+      validation.warnings.forEach(function(w) {
+        rows.push({ label: w, value: '!', warn: true });
       });
     }
+
+    // Mahjong overridden warning
+    if (result.mahjongOverridden) {
+      rows.push({ label: 'Mahjong disabled (hand incomplete)', value: 'No', warn: true });
+    }
+
+    // Tile count info
+    var tileInfo = (validation.totalTileCount || 0) + ' tiles';
+    if (validation.leftoverCount > 0) tileInfo += ' (' + validation.leftoverCount + ' ungrouped)';
+    rows.push({ label: 'Tiles Detected', value: tileInfo });
+
+    // Base score and doubles
+    rows.push({ label: 'Base Points (from melds)', value: result.scoring.basePoints || 0 });
+
+    if (result.scoring.doubles > 0) {
+      rows.push({ label: 'Total Doubles', value: result.scoring.doubles + 'x', gold: true });
+    }
+
+    // Double reasons
     if (result.scoring.doubleReasons && result.scoring.doubleReasons.length > 0) {
       result.scoring.doubleReasons.forEach(function(r) {
         var match = r.match(/^(\d+)×/);
-        var dblVal = match ? '+' + match[1] + 'x' : '✓';
+        var dblVal = match ? '+' + match[1] + 'x' : '+1x';
         rows.push({ label: r, value: dblVal, gold: true });
       });
     }
 
-    if (settings.isMahjong) rows.push({ label: 'Mahjong', value: 'Yes' });
-    // Show actual concealed state from groups, not the settings toggle
+    // Hand type doubles
+    if (result.hands) {
+      result.hands.forEach(function(h) {
+        if (h.doubles > 0) rows.push({ label: h.name, value: '+' + h.doubles + ' double' + (h.doubles > 1 ? 's' : ''), gold: true });
+        else if (validation.isComplete) rows.push({ label: h.name, value: 'Detected' });
+      });
+    }
+
+    // Show score before East doubling
+    if (result.scoring.isEast && result.scoring.preEastScore != null) {
+      rows.push({ label: 'Score before East bonus', value: result.scoring.preEastScore.toLocaleString() });
+      rows.push({ label: 'East Seat (all scores x2)', value: 'x2', gold: true });
+    }
+
+    // Flower scoring
+    if (result.scoring.flowerPoints > 0) {
+      result.scoring.flowerDetails.forEach(function(fd) {
+        rows.push({ label: fd, value: '+pts', gold: true });
+      });
+      rows.push({ label: 'Flower Points Added', value: '+' + result.scoring.flowerPoints });
+    } else if (result.scoring.flowerMode === 'doubles') {
+      rows.push({ label: 'Flowers Used as Doubles', value: 'Higher score path', gold: true });
+    }
+
+    // Mahjong status
+    if (result.effectiveMahjong) {
+      rows.push({ label: 'Mahjong', value: 'Yes (+20 base)' });
+    }
+
+    // Concealed state
     var wasConcealed = scannedGroups.length > 0 && scannedGroups.every(function(g) { return !g.exposed; });
     if (wasConcealed) rows.push({ label: 'Concealed Hand', value: 'Yes' });
-    rows.push({ label: 'Seat Wind', value: settings.seatWind.charAt(0).toUpperCase() + settings.seatWind.slice(1) });
-    rows.push({ label: 'Round Wind', value: settings.roundWind.charAt(0).toUpperCase() + settings.roundWind.slice(1) });
+
+    // Wind info — only show if they contribute to scoring
+    var activeWinds = result.scoring.activeWindBonuses || [];
+    var seatLabel = settings.seatWind.charAt(0).toUpperCase() + settings.seatWind.slice(1);
+    var roundLabel = settings.roundWind.charAt(0).toUpperCase() + settings.roundWind.slice(1);
+    if (activeWinds.indexOf('seat') >= 0) {
+      rows.push({ label: 'Seat Wind: ' + seatLabel, value: 'Pung bonus active', gold: true });
+    } else {
+      rows.push({ label: 'Seat Wind: ' + seatLabel, value: 'No pung' });
+    }
+    if (activeWinds.indexOf('round') >= 0) {
+      rows.push({ label: 'Round Wind: ' + roundLabel, value: 'Pung bonus active', gold: true });
+    } else {
+      rows.push({ label: 'Round Wind: ' + roundLabel, value: 'No pung' });
+    }
 
     rows.forEach(function(r, i) {
       var row = document.createElement('div');
       row.className = 'breakdown-row';
       row.style.animationDelay = (0.2 + i * 0.08) + 's';
-      row.innerHTML = '<span class="label">' + escHTML(r.label) + '</span><span class="value' + (r.gold ? ' gold' : '') + '">' + escHTML(r.value) + '</span>';
+      var valClass = r.warn ? 'value' : ('value' + (r.gold ? ' gold' : ''));
+      var valStyle = r.warn ? ' style="color:#FF6B6B;"' : '';
+      var labelStyle = r.warn ? ' style="color:#FF6B6B;font-size:12px;"' : '';
+      row.innerHTML = '<span class="label"' + labelStyle + '>' + escHTML(r.label) + '</span><span class="' + valClass + '"' + valStyle + '>' + escHTML(r.value) + '</span>';
       bd.appendChild(row);
     });
 
@@ -1032,8 +1172,8 @@
     finalRow.innerHTML = '<span class="label" style="font-weight:700;color:white;">FINAL SCORE</span><span class="value gold" style="font-size:20px;">' + score.toLocaleString() + '</span>';
     bd.appendChild(finalRow);
 
-    // Confetti
-    launchConfetti();
+    // Confetti only for complete hands
+    if (validation.isComplete) launchConfetti();
   }
 
   function scanAgain() {

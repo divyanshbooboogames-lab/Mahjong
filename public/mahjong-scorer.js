@@ -908,6 +908,26 @@ function analyzeHand(groups, flowers = [], options = {}) {
     ? ['Flowers used as doubles (higher score)']
     : flowerScore.details;
 
+  // Calculate pre-East score for breakdown clarity
+  var preEastScore = useFlowerDoubles ? limitB.score : limitA.score;
+  if (isEast) {
+    // Reverse the East doubling to get pre-East value
+    var scoreBeforeEast = useFlowerDoubles
+      ? lookupScoringCard(goulashScore.basePoints, totalDoublesB)
+      : lookupScoringCard(goulashScore.basePoints, baseDoublesTotal) + flowerScore.points;
+    preEastScore = scoreBeforeEast;
+  }
+
+  // Check which wind/dragon bonuses actually contribute
+  var activeWindBonuses = [];
+  for (var wi = 0; wi < groups.length; wi++) {
+    var wg = groups[wi];
+    if (wg.type !== 'pung' && wg.type !== 'kong') continue;
+    var wt = wg.tiles[0];
+    if (wt.type === 'wind' && wt.value === ownWind) activeWindBonuses.push('seat');
+    if (wt.type === 'wind' && wt.value === roundWind) activeWindBonuses.push('round');
+  }
+
   return {
     hands: allHands,
     groups: groups.map(g => ({
@@ -929,11 +949,93 @@ function analyzeHand(groups, flowers = [], options = {}) {
       limitName: finalLimitName,
       limits: finalLimits,
       isEast,
-      flowerMode: useFlowerDoubles ? 'doubles' : 'points'
+      preEastScore: isEast ? preEastScore : null,
+      flowerMode: useFlowerDoubles ? 'doubles' : 'points',
+      activeWindBonuses: activeWindBonuses
     },
     flowers
   };
 }
+
+// ============================================================
+// HAND VALIDATION
+// ============================================================
+
+function validateHand(groups, tileCount) {
+  groups = safeGroups(groups);
+
+  // Count non-flower tiles
+  var nonFlowerCount = tileCount || 0;
+  var groupedCount = 0;
+  groups.forEach(function(g) { groupedCount += g.tiles.length; });
+
+  var sets = groups.filter(function(g) {
+    return g.type === 'pung' || g.type === 'kong' || g.type === 'chow' ||
+           g.type === 'mixed_chow' || g.type === 'crochet';
+  });
+  var pairs = groups.filter(function(g) { return g.type === 'pair'; });
+  var knits = groups.filter(function(g) { return g.type === 'knit'; });
+  var unknowns = groups.filter(function(g) { return g.type === 'unknown'; });
+
+  var warnings = [];
+  var isComplete = false;
+
+  // Standard complete hand: 4 sets + 1 pair
+  if (sets.length === 4 && pairs.length === 1 && unknowns.length === 0) {
+    isComplete = true;
+  }
+  // 7 pairs hand
+  else if (pairs.length === 7 && sets.length === 0) {
+    isComplete = true;
+  }
+  // East round special patterns: 3 pairs + 2 sets, knits, etc.
+  else if (pairs.length === 3 && sets.length === 2) {
+    isComplete = true;
+  }
+  else if (knits.length === 3 && sets.length >= 1) {
+    isComplete = true;
+  }
+
+  // Tile count checks
+  if (nonFlowerCount > 0) {
+    if (nonFlowerCount < 13) {
+      warnings.push('Only ' + nonFlowerCount + ' tiles detected (need 13-14 for a complete hand)');
+    } else if (nonFlowerCount > 18) {
+      warnings.push('Too many tiles (' + nonFlowerCount + ') — check for duplicates');
+    }
+  }
+
+  // Leftover tiles (grouped count < total non-flower count)
+  var leftover = nonFlowerCount - groupedCount;
+  if (leftover > 0) {
+    warnings.push(leftover + ' tile(s) could not form valid melds');
+  }
+
+  // Unknown groups
+  if (unknowns.length > 0) {
+    warnings.push(unknowns.length + ' group(s) do not form recognized melds');
+  }
+
+  // Incomplete hand warnings
+  if (!isComplete) {
+    if (sets.length < 4 && pairs.length < 7) {
+      warnings.push('Incomplete hand: ' + sets.length + ' set(s) + ' + pairs.length + ' pair(s) found (need 4 sets + 1 pair)');
+    }
+  }
+
+  return {
+    isComplete: isComplete,
+    setCount: sets.length,
+    pairCount: pairs.length,
+    knitCount: knits.length,
+    unknownCount: unknowns.length,
+    groupedTileCount: groupedCount,
+    totalTileCount: nonFlowerCount,
+    leftoverCount: leftover > 0 ? leftover : 0,
+    warnings: warnings
+  };
+}
+
 
 // Export for use in HTML
 if (typeof window !== 'undefined') {
@@ -944,7 +1046,7 @@ if (typeof window !== 'undefined') {
     getGroupType, getGroupLabel,
     detectEastRoundHand, detectGoulashHand,
     calculateGoulashScore, detectDoubles, detectFlowerDoubles, scoreFlowers,
-    analyzeHand, lookupScoringCard, applyLimits,
+    analyzeHand, lookupScoringCard, applyLimits, validateHand,
     safeGroups, safeFlatTiles,
     SUITS, SUIT_LABELS, WINDS, DRAGONS, HONOURS
   };
