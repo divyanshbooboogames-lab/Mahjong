@@ -76,7 +76,7 @@ app.post('/api/scan', async (req, res) => {
 
     const response = await Promise.race([
       openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+      model: process.env.OPENAI_MODEL || 'gpt-4o',
       messages: [
         {
           role: 'system',
@@ -90,27 +90,50 @@ Output formats:
 - Dragon: {"type":"dragon","value":"green"|"red"|"white"}
 - Flower: {"type":"flower","set":1|2,"value":1-4}
 
-CRITICAL — How to distinguish the 3 suits:
-1. CHARACTERS: Each tile has a CHINESE NUMERAL written on top, with the character 萬 (ten-thousand) written below it in red/black. The key identifier is the 萬 character at the bottom.
-2. BAMBOO: Each tile shows GREEN STICKS or RODS bundled together. Count the sticks to get the value. 1-Bamboo is special — it looks like a bird (peacock/sparrow), NOT a stick.
-3. CIRCLES: Each tile shows COLORED CIRCLES/DOTS arranged in patterns. Count the circles to get the value. They look like coins or wheels.
+STEP 1 — COUNT THE PHYSICAL TILES FIRST:
+Before identifying suits, count how many separate physical tile faces you can see. Each tile is a small white rectangle. Do NOT hallucinate tiles that aren't there. Do NOT count edges, shadows, or rack parts as tiles. Only count clearly visible tile faces. Report exactly what you see — if you see 11 tiles, return 11 entries, not more.
 
-DO NOT confuse suits. If you see 萬 character → characters. If you see sticks/rods → bamboo. If you see circular dots → circles.
+STEP 2 — IDENTIFY EACH TILE LEFT TO RIGHT:
 
-Honours:
-- Winds: 東(East) 南(South) 西(West) 北(North) — single large character, often in blue/black
-- Green Dragon (發): Green character 發, sometimes stylized
-- Red Dragon (中): Red character 中, often inside a red rectangle/box
-- White Dragon: Blank tile or tile with just a border/frame, no character
+BAMBOO TILES (most commonly confused):
+- Bamboo tiles show PARALLEL GREEN STICKS/RODS arranged vertically
+- CAREFULLY COUNT the individual sticks: 2-Bam=2 sticks, 3-Bam=3 sticks, 4-Bam=4 sticks (often arranged as 2+2), 5-Bam=5 sticks, 6-Bam=6 sticks (arranged as 3+3), 7-Bam=7 sticks, 8-Bam=8 sticks (arranged as 4+4), 9-Bam=9 sticks
+- 1-Bamboo is SPECIAL: it shows a BIRD (peacock/sparrow), NOT sticks
+- COMMON ERROR: Tiles with MANY sticks (6, 7, 8, 9) are frequently misread as lower values. Count EVERY stick carefully. 8-Bam has 8 sticks in two columns of 4.
+- If sticks are dense and tightly packed, it is likely a HIGH-value bamboo (6-9), not low.
 
-Flowers: Ornate artistic tiles depicting seasons (Spring/Summer/Autumn/Winter) or plants (Plum/Orchid/Chrysanthemum/Bamboo). Set 1 = seasons, Set 2 = plants.
+CHARACTER TILES:
+- Show a CHINESE NUMERAL on top with 萬 (ten-thousand) written below in red/black
+- Key identifier: 萬 character at the bottom of the tile
+- Numbers: 一(1) 二(2) 三(3) 四(4) 五(5) 六(6) 七(7) 八(8) 九(9)
+- COMMON ERROR: Do not confuse 二/三 Characters with bamboo sticks. Characters have 萬 below.
 
-A standard hand has 13-16 tiles. Scan left to right. Be precise about the suit.`
+CIRCLE TILES:
+- Show COLORED CIRCLES/DOTS arranged in patterns. Count the circles.
+
+HONOUR TILES — these have ONE LARGE CHARACTER, no sticks or dots:
+- 東(East Wind) — single large character, often in green/blue
+- 南(South Wind), 西(West Wind), 北(North Wind)
+- CRITICAL: 東 looks like a complex character with horizontal strokes. Do NOT confuse it with bamboo sticks. Wind tiles have ONE character filling the tile, not parallel sticks.
+- 發(Green Dragon) — green character, sometimes stylized
+- 中(Red Dragon) — red character, often inside a red rectangle/box
+- White Dragon — blank tile or just a border frame
+
+FLOWER TILES:
+- Ornate artistic designs showing plants or seasons with small text
+- Much more decorative/colorful than regular tiles
+- Set 1 = seasons (Spring/Summer/Autumn/Winter), Set 2 = plants (Plum/Orchid/Chrysanthemum/Bamboo)
+
+ACCURACY RULES:
+- Only report tiles you can clearly see. Never guess or add extra tiles.
+- If a tile is partially hidden or unclear, skip it rather than guess wrong.
+- Double-check bamboo counts — this is the #1 source of errors.
+- Scan strictly left to right across the rack.`
         },
         {
           role: 'user',
           content: [
-            { type: 'text', text: 'Identify every Mahjong tile in this photo. Return ONLY the JSON array.' },
+            { type: 'text', text: 'First count how many physical tile faces are visible. Then identify each tile left to right. For bamboo tiles, count every individual stick carefully. Return ONLY the JSON array.' },
             { type: 'image_url', image_url: { url: image, detail: 'high' } }
           ]
         }
@@ -148,8 +171,30 @@ A standard hand has 13-16 tiles. Scan left to right. Be precise about the suit.`
       return false;
     });
 
+    // Sanity check: flag duplicate tiles (max 4 of each in a real set)
+    const tileCounts = {};
+    const warnings = [];
+    validTiles.forEach(t => {
+      let key;
+      if (t.type === 'wind') key = `wind_${t.value}`;
+      else if (t.type === 'dragon') key = `dragon_${t.value}`;
+      else if (t.type === 'flower') key = `flower_${t.set}_${t.value}`;
+      else key = `${t.suit}_${t.value}`;
+      tileCounts[key] = (tileCounts[key] || 0) + 1;
+    });
+    for (const [key, count] of Object.entries(tileCounts)) {
+      if (key.startsWith('flower_') && count > 1) {
+        warnings.push(`Duplicate flower detected: ${key} (×${count})`);
+      } else if (!key.startsWith('flower_') && count > 4) {
+        warnings.push(`Too many ${key}: ${count} (max 4 in a set)`);
+      }
+    }
+    if (warnings.length > 0) {
+      console.log('[AI] Warnings:', warnings.join(', '));
+    }
+
     console.log(`[AI] Detected ${validTiles.length} valid tiles`);
-    res.json({ success: true, tiles: validTiles, count: validTiles.length });
+    res.json({ success: true, tiles: validTiles, count: validTiles.length, warnings });
 
   } catch (err) {
     console.error('[AI] Error:', err.message);

@@ -696,7 +696,27 @@
         console.error('[DISPLAY] Error:', displayErr);
         tilesGrid.innerHTML = '<div style="color:#F9A8D4;text-align:center;padding:10px;font-size:12px;">Detected ' + data.count + ' tiles (display error — tap Calculate to score anyway)</div>';
       }
-      status.innerHTML = '<div class="scan-status" style="color:var(--neon-teal);">&#9989; Detected ' + data.count + ' tiles</div>';
+
+      // Show scan warnings from server (duplicate tiles, etc.)
+      var scanWarnings = data.warnings && data.warnings.length > 0 ? data.warnings : [];
+      var warnHTML = '';
+      if (scanWarnings.length > 0) {
+        warnHTML = '<div style="color:#FF6B6B;font-size:11px;margin-top:4px;">' + scanWarnings.map(function(w) { return '&#9888; ' + escHTML(w); }).join('<br>') + '</div>';
+      }
+
+      // Tile count reasonableness check
+      var nonFlowerCount = data.tiles.filter(function(t) { return t.type !== 'flower'; }).length;
+      var countColor = 'var(--neon-teal)';
+      var countNote = '';
+      if (nonFlowerCount < 13) {
+        countColor = '#FFD700';
+        countNote = ' (fewer than 13 — may be incomplete)';
+      } else if (nonFlowerCount > 14) {
+        countColor = '#FF6B6B';
+        countNote = ' (more than 14 — AI may have hallucinated extra tiles)';
+      }
+
+      status.innerHTML = '<div class="scan-status" style="color:' + countColor + ';">&#9989; Detected ' + data.count + ' tiles' + escHTML(countNote) + '</div>' + warnHTML;
       buttons.style.display = 'flex';
       document.getElementById('btnCalculate').style.display = 'block';
       showToast('Found ' + data.count + ' tiles!');
