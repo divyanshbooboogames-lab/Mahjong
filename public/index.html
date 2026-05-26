@@ -536,21 +536,12 @@
   });
 
   // ---- AI SCAN ----
-  var serverAwake = false;
-
-  async function wakeServer() {
-    try {
-      var r = await fetch('/health', { signal: AbortSignal.timeout(5000) });
-      if (r.ok) { serverAwake = true; return true; }
-    } catch(e) {}
-    return false;
-  }
 
   async function fetchWithRetry(url, options, maxRetries, statusEl) {
     for (var attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         var controller = new AbortController();
-        var timeoutId = setTimeout(function() { controller.abort(); }, attempt === 1 ? 60000 : 30000);
+        var timeoutId = setTimeout(function() { controller.abort(); }, 55000);
         options.signal = controller.signal;
 
         if (attempt > 1) {
@@ -563,8 +554,7 @@
       } catch(err) {
         clearTimeout(timeoutId);
         if (attempt === maxRetries) throw err;
-        // Wait before retry
-        statusEl.innerHTML = '<div class="scan-status"><div class="spinner"></div><p>Server warming up... retrying in 3s</p></div>';
+        statusEl.innerHTML = '<div class="scan-status"><div class="spinner"></div><p>Retrying in 3s...</p></div>';
         await new Promise(function(r) { setTimeout(r, 3000); });
       }
     }
@@ -579,29 +569,6 @@
     status.style.display = 'block';
     buttons.style.display = 'none';
     tilesGrid.innerHTML = '';
-
-    // Wake server if needed (Render free tier sleeps)
-    if (!serverAwake) {
-      status.innerHTML = '<div class="scan-status"><div class="spinner"></div><p>Waking up server...</p></div>';
-      var awake = await wakeServer();
-      if (!awake) {
-        status.innerHTML = '<div class="scan-status"><div class="spinner"></div><p>Server is starting up, please wait...</p></div>';
-        // Try a few more times
-        for (var w = 0; w < 12; w++) {
-          await new Promise(function(r) { setTimeout(r, 5000); });
-          awake = await wakeServer();
-          if (awake) break;
-          status.innerHTML = '<div class="scan-status"><div class="spinner"></div><p>Server starting up... (' + (w+1)*5 + 's)</p></div>';
-        }
-        if (!awake) {
-          status.innerHTML = '<div class="scan-status" style="color:#EF4444;">&#9888; Server unavailable<br><span style="font-size:11px;opacity:0.6;">Please try again in a minute</span></div>';
-          buttons.style.display = 'flex';
-          document.getElementById('btnCalculate').style.display = 'none';
-          sfx('error');
-          return;
-        }
-      }
-    }
 
     status.innerHTML = '<div class="scan-status"><div class="spinner"></div><p>AI is analyzing your tiles...</p></div>';
 
@@ -621,21 +588,36 @@
         body: JSON.stringify({ image: imageDataUrl })
       }, 3, status);
 
-      var data = await response.json();
-
       // Remove scan beam
       var b = zone.querySelector('.scan-beam');
       if (b) b.remove();
 
-      if (!data.success) {
-        status.innerHTML = '<div class="scan-status" style="color:#EF4444;">&#9888; ' + data.error + '<br><span style="font-size:11px;opacity:0.6;">Try retaking with better lighting</span></div>';
+      // Try to parse JSON — server might return HTML error page
+      var data;
+      try {
+        data = await response.json();
+      } catch (parseErr) {
+        var errMsg = 'Server error (HTTP ' + response.status + ')';
+        var errTip = response.status === 502 ? 'Server is restarting — tap Retake in a few seconds' : 'Unexpected server response — tap Retake to try again';
+        status.innerHTML = '<div class="scan-status" style="color:#EF4444;">&#9888; ' + errMsg + '<br><span style="font-size:11px;opacity:0.6;">' + errTip + '</span></div>';
         buttons.style.display = 'flex';
         document.getElementById('btnCalculate').style.display = 'none';
         sfx('error');
         return;
       }
 
-      serverAwake = true;
+      if (!data.success) {
+        var tip = 'Try retaking with better lighting';
+        if (data.error && data.error.includes('API key')) tip = 'Server configuration issue — contact support';
+        if (data.error && data.error.includes('rate limit')) tip = 'Wait a moment before scanning again';
+        if (data.error && data.error.includes('timed out')) tip = 'Try a clearer photo with fewer tiles';
+        status.innerHTML = '<div class="scan-status" style="color:#EF4444;">&#9888; ' + (data.error || 'Scan failed') + '<br><span style="font-size:11px;opacity:0.6;">' + tip + '</span></div>';
+        buttons.style.display = 'flex';
+        document.getElementById('btnCalculate').style.display = 'none';
+        sfx('error');
+        return;
+      }
+
       scannedTiles = data.tiles;
       displayTiles(data.tiles, tilesGrid);
       status.innerHTML = '<div class="scan-status" style="color:var(--neon-teal);">&#9989; Detected ' + data.count + ' tiles</div>';
@@ -648,7 +630,7 @@
       if (b2) b2.remove();
       var errMsg = 'Scan failed';
       var errTip = 'Check your internet connection and try again';
-      if (err.name === 'AbortError') { errMsg = 'Request timed out'; errTip = 'The server may be busy — tap Retake to try again'; }
+      if (err.name === 'AbortError') { errMsg = 'Request timed out'; errTip = 'Server may be busy — tap Retake to try again'; }
       status.innerHTML = '<div class="scan-status" style="color:#EF4444;">&#9888; ' + errMsg + '<br><span style="font-size:11px;opacity:0.6;">' + errTip + '</span></div>';
       buttons.style.display = 'flex';
       document.getElementById('btnCalculate').style.display = 'none';
@@ -967,8 +949,7 @@
     buildBG();
     var muteBtn = document.getElementById('muteBtn');
     if (muteBtn && soundMuted) { muteBtn.innerHTML = '&#128263;'; }
-    // Pre-wake the server in background (Render free tier cold start)
-    wakeServer();
+    // Ready
   }
 
   document.addEventListener('DOMContentLoaded', init);
