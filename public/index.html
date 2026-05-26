@@ -530,10 +530,35 @@
       var img = document.createElement('img');
       img.src = e.target.result;
       zone.appendChild(img);
-      scanWithAI(e.target.result);
+      // Compress before scanning — phone photos can be 10MB+
+      compressImage(e.target.result, 1600, 0.8).then(function(compressed) {
+        scanWithAI(compressed);
+      });
     };
     reader.readAsDataURL(this.files[0]);
   });
+
+  // ---- IMAGE COMPRESSION ----
+  function compressImage(dataUrl, maxWidth, quality) {
+    return new Promise(function(resolve) {
+      var img = new Image();
+      img.onload = function() {
+        var w = img.width;
+        var h = img.height;
+        if (w > maxWidth) {
+          h = Math.round(h * maxWidth / w);
+          w = maxWidth;
+        }
+        var canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        var ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.src = dataUrl;
+    });
+  }
 
   // ---- AI SCAN ----
 

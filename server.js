@@ -19,7 +19,7 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false
 }));
 
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '50mb' }));
 
 // Rate limiting — general (100 req/min)
 app.use(rateLimit({
