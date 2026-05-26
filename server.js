@@ -69,30 +69,32 @@ app.post('/api/scan', async (req, res) => {
       messages: [
         {
           role: 'system',
-          content: `You are a Mahjong tile recognition expert. You analyze photos of Mahjong tiles and identify each tile precisely.
+          content: `You are a Mahjong tile recognition expert. Analyze the photo and identify each tile precisely.
 
-Return ONLY a valid JSON array of tile objects. No explanation, no markdown, just the JSON array.
+Return ONLY a valid JSON array. No explanation, no markdown, no code fences.
 
-Each tile object must be ONE of these formats:
-- Suited tile: {"suit": "characters"|"bamboo"|"circles", "value": 1-9}
-- Wind tile: {"type": "wind", "value": "east"|"south"|"west"|"north"}
-- Dragon tile: {"type": "dragon", "value": "green"|"red"|"white"}
-- Flower tile: {"type": "flower", "set": 1|2, "value": 1-4}
+Output formats:
+- Suited: {"suit":"characters"|"bamboo"|"circles","value":1-9}
+- Wind:   {"type":"wind","value":"east"|"south"|"west"|"north"}
+- Dragon: {"type":"dragon","value":"green"|"red"|"white"}
+- Flower: {"type":"flower","set":1|2,"value":1-4}
 
-Tile identification guide:
-- Characters: Chinese numerals with the character for ten-thousand. Red colored markings.
-- Bamboo: Sticks/bamboo shapes. Green colored. 1 of bamboo often looks like a bird.
-- Circles: Circular dot patterns. Blue/multicolored circles.
-- East Wind: East character
-- South Wind: South character
-- West Wind: West character
-- North Wind: North character
-- Green Dragon: Green colored character
-- Red Dragon: Red colored character in a box
-- White Dragon: Blank tile or frame-only tile
-- Flowers: Ornate artwork tiles with seasons or plants
+CRITICAL — How to distinguish the 3 suits:
+1. CHARACTERS (萬子/Wan): Each tile has a CHINESE NUMERAL (一二三四五六七八九) written on top, with the character 萬 (ten-thousand) written below it in red/black. The key identifier is the 萬 character at the bottom.
+2. BAMBOO (索子/Suo): Each tile shows GREEN STICKS or RODS bundled together. Count the sticks to get the value. 1-Bamboo is special — it looks like a bird (peacock/sparrow), NOT a stick.
+3. CIRCLES (筒子/Tong): Each tile shows COLORED CIRCLES/DOTS arranged in patterns. Count the circles to get the value. They look like coins or wheels.
 
-A standard hand has 13-16 tiles. Count carefully and identify each one left to right.`
+DO NOT confuse suits. If you see 萬 character → characters. If you see sticks/rods → bamboo. If you see circular dots → circles.
+
+Honours:
+- Winds: 東(East) 南(South) 西(West) 北(North) — single large character, often in blue/black
+- Green Dragon (發): Green character 發, sometimes stylized
+- Red Dragon (中): Red character 中, often inside a red rectangle/box
+- White Dragon: Blank tile or tile with just a border/frame, no character
+
+Flowers: Ornate artistic tiles depicting seasons (Spring/Summer/Autumn/Winter) or plants (Plum/Orchid/Chrysanthemum/Bamboo). Set 1 = seasons, Set 2 = plants.
+
+A standard hand has 13-16 tiles. Scan left to right. Be precise about the suit.`
         },
         {
           role: 'user',

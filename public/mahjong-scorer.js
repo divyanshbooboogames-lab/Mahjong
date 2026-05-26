@@ -473,19 +473,21 @@ function detectDoubles(groups, flowers, options = {}) {
     }
   }
 
-  // Pung of own wind
-  for (const g of pungs) {
-    if (g.tiles[0].type === 'wind' && g.tiles[0].value === ownWind) {
-      totalDoubles += 1;
-      reasons.push(`1× Pung of Own Wind`);
+  // Pung of own wind (skip if double wind — handled separately at 2-double level)
+  if (ownWind !== roundWind) {
+    for (const g of pungs) {
+      if (g.tiles[0].type === 'wind' && g.tiles[0].value === ownWind) {
+        totalDoubles += 1;
+        reasons.push(`1× Pung of Own Wind`);
+      }
     }
-  }
 
-  // Pung of round wind
-  for (const g of pungs) {
-    if (g.tiles[0].type === 'wind' && g.tiles[0].value === roundWind) {
-      totalDoubles += 1;
-      reasons.push(`1× Pung of Round Wind`);
+    // Pung of round wind (skip if double wind)
+    for (const g of pungs) {
+      if (g.tiles[0].type === 'wind' && g.tiles[0].value === roundWind) {
+        totalDoubles += 1;
+        reasons.push(`1× Pung of Round Wind`);
+      }
     }
   }
 
@@ -682,8 +684,9 @@ function applyLimits(score, isEast) {
 // FLOWER SCORING
 // ============================================================
 
-function scoreFlowers(flowers, ownWind) {
+function scoreFlowers(flowers, ownWind, roundWind) {
   const seatNum = WINDS.indexOf(ownWind) + 1;
+  const roundNum = WINDS.indexOf(roundWind) + 1;
   let points = 0;
   const details = [];
 
@@ -699,13 +702,123 @@ function scoreFlowers(flowers, ownWind) {
     details.push('Gentleman Bouquet: 1000');
   }
 
+  // Own flower pair: 500 (PDF page 6)
   const ownFlowers = flowers.filter(f => f.value === seatNum);
   if (ownFlowers.length === 2) {
     points += 500;
     details.push('Own Flower Pair: 500');
   }
 
+  // Round flower pair: 500 (PDF page 6 — "Own or Round Flower Pair: 500")
+  if (roundNum !== seatNum) {
+    const roundFlowers = flowers.filter(f => f.value === roundNum);
+    if (roundFlowers.length === 2) {
+      points += 500;
+      details.push('Round Flower Pair: 500');
+    }
+  }
+
   return { points, details };
+}
+
+
+// ============================================================
+// FLOWER DOUBLES DETECTION (PDF Page 9)
+// Flowers can be taken as POINTS or kept as DOUBLES, not both.
+// This function calculates the doubles if flowers are used as doubles.
+// ============================================================
+
+function detectFlowerDoubles(flowers, ownWind, roundWind) {
+  if (!flowers || flowers.length === 0) return { totalDoubles: 0, reasons: [], pointsForfeited: 0 };
+
+  const seatNum = WINDS.indexOf(ownWind) + 1;
+  const roundNum = WINDS.indexOf(roundWind) + 1;
+
+  const set1 = flowers.filter(f => f.set === 1);
+  const set2 = flowers.filter(f => f.set === 2);
+  const hasBouquet1 = set1.length === 4;
+  const hasBouquet2 = set2.length === 4;
+  const bouquetCount = (hasBouquet1 ? 1 : 0) + (hasBouquet2 ? 1 : 0);
+
+  // Count own/round flowers from NON-bouquet sets only
+  // (a completed bouquet is its own bonus; its individual flowers don't double-count)
+  const extraFlowers = flowers.filter(f => {
+    if (f.set === 1 && hasBouquet1) return false;
+    if (f.set === 2 && hasBouquet2) return false;
+    return true;
+  });
+  const ownFlowers = flowers.filter(f => f.value === seatNum);
+  const roundFlowers = flowers.filter(f => f.value === roundNum);
+  const extraOwn = extraFlowers.filter(f => f.value === seatNum);
+  const extraRound = extraFlowers.filter(f => f.value === roundNum);
+  const hasOwnFlower = extraOwn.length >= 1;
+  const hasRoundFlower = extraRound.length >= 1;
+  const hasOwnPair = ownFlowers.length >= 2;
+  const hasRoundPair = roundFlowers.length >= 2;
+
+  let totalDoubles = 0;
+  const reasons = [];
+  let pointsForfeited = 0;
+
+  // 6 DOUBLES: 2 Bouquets / 5000 (PDF page 9)
+  if (bouquetCount === 2) {
+    totalDoubles += 6;
+    reasons.push('6× 2 Bouquets (flower doubles)');
+    pointsForfeited = 5000;
+    return { totalDoubles, reasons, pointsForfeited };
+  }
+
+  // 5 DOUBLES: Bouquet + Own Flower + Round Flower
+  if (bouquetCount >= 1 && hasOwnFlower && hasRoundFlower) {
+    totalDoubles += 5;
+    reasons.push('5× Bouquet + Own Flower + Round Flower');
+    pointsForfeited = 1000 + (hasOwnPair ? 500 : 0) + (hasRoundPair ? 500 : 0);
+    return { totalDoubles, reasons, pointsForfeited };
+  }
+
+  // 4 DOUBLES: Bouquet + Own/Round Flower / 1500
+  if (bouquetCount >= 1 && (hasOwnFlower || hasRoundFlower)) {
+    totalDoubles += 4;
+    reasons.push('4× Bouquet + Own/Round Flower');
+    pointsForfeited = 1000 + (hasOwnPair ? 500 : 0) + (hasRoundPair ? 500 : 0);
+    return { totalDoubles, reasons, pointsForfeited };
+  }
+
+  // 4 DOUBLES: Own Flower Pair + Round Flower Pair / 1000
+  if (hasOwnPair && hasRoundPair) {
+    totalDoubles += 4;
+    reasons.push('4× Own Flower Pair + Round Flower Pair');
+    pointsForfeited = 1000;
+    return { totalDoubles, reasons, pointsForfeited };
+  }
+
+  // 3 DOUBLES: Bouquet / 1000 (used as doubles)
+  if (bouquetCount >= 1) {
+    totalDoubles += 3;
+    reasons.push('3× Bouquet (flower doubles)');
+    pointsForfeited = 1000;
+    return { totalDoubles, reasons, pointsForfeited };
+  }
+
+  // 3 DOUBLES: Own/Round Flower Pair/500 + Own/Round Flower
+  if ((hasOwnPair && hasRoundFlower) || (hasRoundPair && hasOwnFlower)) {
+    totalDoubles += 3;
+    reasons.push('3× Flower Pair + Flower of Round/Own');
+    pointsForfeited = 500;
+    return { totalDoubles, reasons, pointsForfeited };
+  }
+
+  // 2 DOUBLES: Pair of Own Flower OR Pair of Round Flower
+  if (hasOwnPair || hasRoundPair) {
+    totalDoubles += 2;
+    reasons.push('2× Flower Pair (flower doubles)');
+    pointsForfeited = 500;
+    return { totalDoubles, reasons, pointsForfeited };
+  }
+
+  // 1 DOUBLE level: individual flowers (these are already in detectDoubles)
+  // No additional flower doubles at this level
+  return { totalDoubles: 0, reasons: [], pointsForfeited: 0 };
 }
 
 
@@ -728,18 +841,40 @@ function analyzeHand(groups, flowers = [], options = {}) {
     ownWind, roundWind, isMahjong, isLastTile, isCleanSweep, isConcealed, isDrawnStanding
   });
 
-  const flowerScore = scoreFlowers(flowers, ownWind);
+  const flowerScore = scoreFlowers(flowers, ownWind, roundWind);
+  const flowerDoublesResult = detectFlowerDoubles(flowers, ownWind, roundWind);
 
-  let finalScore = goulashScore.basePoints;
-  const totalDoubles = doublesResult.totalDoubles;
+  // === FLOWER DUAL-USE: Calculate BOTH paths, pick higher score ===
+  // Path A: Flowers as POINTS (500/1000 bonuses added to final)
+  let scoreA = goulashScore.basePoints;
+  scoreA = lookupScoringCard(scoreA, doublesResult.totalDoubles);
+  if (isEast) scoreA *= 2;
+  scoreA += flowerScore.points;
+  const limitA = applyLimits(scoreA, isEast);
 
-  finalScore = lookupScoringCard(finalScore, totalDoubles);
+  // Path B: Flowers as DOUBLES (forfeit point bonuses, gain extra doubles)
+  let scoreB = goulashScore.basePoints;
+  const totalDoublesB = doublesResult.totalDoubles + flowerDoublesResult.totalDoubles;
+  scoreB = lookupScoringCard(scoreB, totalDoublesB);
+  if (isEast) scoreB *= 2;
+  // No flower points added — they're used as doubles
+  const limitB = applyLimits(scoreB, isEast);
 
-  if (isEast) finalScore *= 2;
-
-  finalScore += flowerScore.points;
-
-  const limitResult = applyLimits(finalScore, isEast);
+  // Pick the better path
+  const useFlowerDoubles = limitB.score > limitA.score && flowerDoublesResult.totalDoubles > 0;
+  const finalScore = useFlowerDoubles ? limitB.score : limitA.score;
+  const finalLimitName = useFlowerDoubles ? limitB.limitName : limitA.limitName;
+  const finalLimits = useFlowerDoubles ? limitB.limits : limitA.limits;
+  const finalDoubles = useFlowerDoubles
+    ? doublesResult.totalDoubles + flowerDoublesResult.totalDoubles
+    : doublesResult.totalDoubles;
+  const finalDoubleReasons = useFlowerDoubles
+    ? [...doublesResult.reasons, ...flowerDoublesResult.reasons]
+    : doublesResult.reasons;
+  const finalFlowerPoints = useFlowerDoubles ? 0 : flowerScore.points;
+  const finalFlowerDetails = useFlowerDoubles
+    ? ['Flowers used as doubles (higher score)']
+    : flowerScore.details;
 
   return {
     hands: allHands,
@@ -753,15 +888,16 @@ function analyzeHand(groups, flowers = [], options = {}) {
     scoring: {
       basePoints: goulashScore.basePoints,
       breakdown: goulashScore.breakdown,
-      doubles: totalDoubles,
-      doubleReasons: doublesResult.reasons,
-      flowerPoints: flowerScore.points,
-      flowerDetails: flowerScore.details,
+      doubles: finalDoubles,
+      doubleReasons: finalDoubleReasons,
+      flowerPoints: finalFlowerPoints,
+      flowerDetails: finalFlowerDetails,
       rawTotal: finalScore,
-      finalScore: limitResult.score,
-      limitName: limitResult.limitName,
-      limits: limitResult.limits,
-      isEast
+      finalScore,
+      limitName: finalLimitName,
+      limits: finalLimits,
+      isEast,
+      flowerMode: useFlowerDoubles ? 'doubles' : 'points'
     },
     flowers
   };
@@ -775,7 +911,7 @@ if (typeof window !== 'undefined') {
     isPung, isKong, isPair, isChow, isMixedChow, isCrochet, isKnit,
     getGroupType, getGroupLabel,
     detectEastRoundHand, detectGoulashHand,
-    calculateGoulashScore, detectDoubles, scoreFlowers,
+    calculateGoulashScore, detectDoubles, detectFlowerDoubles, scoreFlowers,
     analyzeHand, lookupScoringCard, applyLimits,
     SUITS, SUIT_LABELS, WINDS, DRAGONS, HONOURS
   };

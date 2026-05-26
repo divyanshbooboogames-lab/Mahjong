@@ -191,9 +191,10 @@
       padding: 16px 0;
     }
     .tile-chip {
-      width: 40px; height: 52px; border: 2px solid rgba(255,255,255,0.2);
+      width: 46px; height: 58px; border: 2px solid rgba(255,255,255,0.2);
       border-radius: 8px; background: rgba(255,255,255,0.08);
       display: flex; align-items: center; justify-content: center;
+      flex-direction: column; padding: 4px 2px;
       font-size: 18px; font-weight: 700;
       animation: tileFlip 0.4s ease backwards;
     }
@@ -598,14 +599,15 @@
       var el = document.createElement('div');
       el.className = 'tile-chip';
       el.style.animationDelay = (i * 0.05) + 's';
-      var sym = '';
-      if (t.suit === 'characters') { sym = CHAR_MAP.characters[t.value]; el.style.color = '#FF6B6B'; }
-      else if (t.suit === 'bamboo') { sym = t.value; el.style.color = '#00FFD1'; }
-      else if (t.suit === 'circles') { sym = t.value; el.style.color = '#6BC5FF'; }
-      else if (t.type === 'wind') { sym = CHAR_MAP.winds[t.value]; el.style.color = '#E0E0E0'; }
-      else if (t.type === 'dragon') { sym = CHAR_MAP.dragons[t.value]; el.style.color = t.value === 'green' ? '#00FFD1' : '#FF6B6B'; }
-      else if (t.type === 'flower') { sym = '\u{1F338}'; }
-      el.textContent = sym;
+      var sym = '', label = '', col = '#E0E0E0';
+      if (t.suit === 'characters') { sym = CHAR_MAP.characters[t.value]; label = t.value + ' Char'; col = '#FF6B6B'; }
+      else if (t.suit === 'bamboo') { sym = t.value; label = t.value + ' Bam'; col = '#00FFD1'; }
+      else if (t.suit === 'circles') { sym = t.value; label = t.value + ' Dot'; col = '#6BC5FF'; }
+      else if (t.type === 'wind') { sym = CHAR_MAP.winds[t.value]; label = t.value.charAt(0).toUpperCase() + ' Wind'; col = '#E0E0E0'; }
+      else if (t.type === 'dragon') { sym = CHAR_MAP.dragons[t.value]; label = t.value.charAt(0).toUpperCase() + ' Drg'; col = t.value === 'green' ? '#00FFD1' : t.value === 'white' ? '#E0E0E0' : '#FF6B6B'; }
+      else if (t.type === 'flower') { sym = '\u{1F338}'; label = 'Flower'; col = '#F9A8D4'; }
+      el.style.color = col;
+      el.innerHTML = '<span style="font-size:18px;display:block;line-height:1.1;">' + sym + '</span><span style="font-size:8px;opacity:0.7;display:block;line-height:1;margin-top:2px;color:' + col + ';">' + label + '</span>';
       container.appendChild(el);
     });
   }
@@ -757,7 +759,11 @@
       });
     }
     if (result.scoring.doubleReasons && result.scoring.doubleReasons.length > 0) {
-      result.scoring.doubleReasons.forEach(function(r) { rows.push({ label: r, value: '', gold: true }); });
+      result.scoring.doubleReasons.forEach(function(r) {
+        var match = r.match(/^(\d+)×/);
+        var dblVal = match ? '+' + match[1] + 'x' : '✓';
+        rows.push({ label: r, value: dblVal, gold: true });
+      });
     }
 
     if (settings.isMahjong) rows.push({ label: 'Mahjong', value: 'Yes' });
