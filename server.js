@@ -76,7 +76,7 @@ app.post('/api/scan', async (req, res) => {
 
     const response = await Promise.race([
       openai.chat.completions.create({
-      model: process.env.OPENAI_MODEL || 'gpt-4o',
+      model: process.env.OPENAI_MODEL || 'gpt-4.1',
       messages: [
         {
           role: 'system',
