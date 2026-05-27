@@ -90,50 +90,68 @@ Output formats:
 - Dragon: {"type":"dragon","value":"green"|"red"|"white"}
 - Flower: {"type":"flower","set":1|2,"value":1-4}
 
-STEP 1 — COUNT THE PHYSICAL TILES FIRST:
-Before identifying suits, count how many separate physical tile faces you can see. Each tile is a small white rectangle. Do NOT hallucinate tiles that aren't there. Do NOT count edges, shadows, or rack parts as tiles. Only count clearly visible tile faces. Report exactly what you see — if you see 11 tiles, return 11 entries, not more.
+STEP 1 — COUNT PHYSICAL TILES:
+Count every separate white/ivory rectangular tile face visible. A standard Mahjong hand has 13-14 non-flower tiles. Tiles sit side by side on a rack or table. Do NOT count shadows, rack edges, or tile backs. Your JSON array MUST have exactly as many entries as physical tiles you counted — no more, no fewer.
 
 STEP 2 — IDENTIFY EACH TILE LEFT TO RIGHT:
 
-BAMBOO TILES (most commonly confused):
-- Bamboo tiles show PARALLEL GREEN STICKS/RODS arranged vertically
-- CAREFULLY COUNT the individual sticks: 2-Bam=2 sticks, 3-Bam=3 sticks, 4-Bam=4 sticks (often arranged as 2+2), 5-Bam=5 sticks, 6-Bam=6 sticks (arranged as 3+3), 7-Bam=7 sticks, 8-Bam=8 sticks (arranged as 4+4), 9-Bam=9 sticks
-- 1-Bamboo is SPECIAL: it shows a BIRD (peacock/sparrow), NOT sticks
-- COMMON ERROR: Tiles with MANY sticks (6, 7, 8, 9) are frequently misread as lower values. Count EVERY stick carefully. 8-Bam has 8 sticks in two columns of 4.
-- If sticks are dense and tightly packed, it is likely a HIGH-value bamboo (6-9), not low.
+CRITICAL — DUPLICATE TILES ARE NORMAL:
+A Mahjong set contains 4 copies of every tile. Seeing 2, 3, or 4 identical tiles next to each other is EXPECTED (these form "pungs" and "kongs"). If you see 3 tiles that all look like 中 (Red Dragon), report ALL THREE as {"type":"dragon","value":"red"}. Do NOT skip duplicates or replace them with a different tile.
 
-CHARACTER TILES:
-- Show a CHINESE NUMERAL on top with 萬 (ten-thousand) written below in red/black
-- Key identifier: 萬 character at the bottom of the tile
+HONOUR TILES (single large character, NO sticks or dots):
+- 中 Red Dragon — a red character 中, sometimes inside a red box/rectangle. Very common in hands. If you see a red character that looks like 中 on multiple tiles, report each one.
+- 發 Green Dragon — a green stylized character
+- White Dragon — blank tile or plain border frame
+- 東 East Wind — single large blue/green character with horizontal+vertical strokes. Do NOT confuse with bamboo sticks. Wind tiles have ONE character filling the entire tile face.
+- 南 South Wind, 西 West Wind, 北 North Wind — same style, one large character each
+- KEY TEST: If the tile has ONE large character and NO small 萬 below it, it is an honour tile (wind or dragon), not a character tile.
+
+BAMBOO TILES:
+- Show GREEN PARALLEL STICKS/RODS arranged vertically
+- *** 1-BAMBOO IS A BIRD *** — It shows a BIRD (peacock/sparrow with colorful plumage), NOT sticks. This is the single most distinctive tile in the set. If you see a tile with a bird/peacock image, it is ALWAYS 1-Bamboo: {"suit":"bamboo","value":1}
+- Stick counts: 2-Bam=2 sticks, 3-Bam=3 sticks, 4-Bam=4 sticks (2x2), 5-Bam=5 sticks, 6-Bam=6 sticks (3+3), 7-Bam=7 sticks, 8-Bam=8 sticks (4+4), 9-Bam=9 sticks (3+3+3)
+- Count EVERY individual stick. Dense/tightly packed sticks = HIGH value (6-9), not low.
+- COMMON ERROR: Misreading 4-Bam as 2-Bam because sticks overlap. Count carefully.
+
+CHARACTER TILES (萬 / wan):
+- Show a CHINESE NUMERAL on top with the character 萬 written below in red/black
+- KEY IDENTIFIER: The 萬 character at the bottom distinguishes these from all other tiles
 - Numbers: 一(1) 二(2) 三(3) 四(4) 五(5) 六(6) 七(7) 八(8) 九(9)
-- COMMON ERROR: Do not confuse 二/三 Characters with bamboo sticks. Characters have 萬 below.
+- Do NOT confuse 二/三 Characters with 2/3 bamboo sticks. Characters always have 萬 below.
 
-CIRCLE TILES:
-- Show COLORED CIRCLES/DOTS arranged in patterns. Count the circles.
-
-HONOUR TILES — these have ONE LARGE CHARACTER, no sticks or dots:
-- 東(East Wind) — single large character, often in green/blue
-- 南(South Wind), 西(West Wind), 北(North Wind)
-- CRITICAL: 東 looks like a complex character with horizontal strokes. Do NOT confuse it with bamboo sticks. Wind tiles have ONE character filling the tile, not parallel sticks.
-- 發(Green Dragon) — green character, sometimes stylized
-- 中(Red Dragon) — red character, often inside a red rectangle/box
-- White Dragon — blank tile or just a border frame
+CIRCLE/DOT TILES:
+- Show COLORED CIRCLES (dots) in symmetric patterns. NO sticks, NO characters.
+- Count the circles carefully using the pattern:
+  1-Circle = 1 large circle (often multicolored rings)
+  2-Circle = 2 circles (vertical stack)
+  3-Circle = 3 circles (diagonal or triangle)
+  4-Circle = 4 circles (2x2 square)
+  5-Circle = 5 circles (X pattern or 2+1+2)
+  6-Circle = 6 circles (3+3 or 2x3 grid)
+  7-Circle = 7 circles (3+1+3 or 2+3+2)
+  8-Circle = 8 circles (2 columns of 4, or 3+2+3)
+  9-Circle = 9 circles (3x3 grid)
+- COMMON ERROR: Miscounting dense circles. 6-Circle and 8-Circle are often read as 4 or 5. Count every dot.
 
 FLOWER TILES:
-- Ornate artistic designs showing plants or seasons with small text
-- Much more decorative/colorful than regular tiles
+- Ornate artistic designs with plants, seasons, or scenery — much more decorative than regular tiles
+- Often have a small number AND artistic imagery (plum blossoms, orchids, etc.)
 - Set 1 = seasons (Spring/Summer/Autumn/Winter), Set 2 = plants (Plum/Orchid/Chrysanthemum/Bamboo)
 
-ACCURACY RULES:
-- Only report tiles you can clearly see. Never guess or add extra tiles.
-- If a tile is partially hidden or unclear, skip it rather than guess wrong.
-- Double-check bamboo counts — this is the #1 source of errors.
-- Scan strictly left to right across the rack.`
+FINAL CHECKS:
+- Scan left to right. Report every tile exactly once.
+- Duplicate tiles (2-4 identical) are normal and expected — report each copy.
+- If a tile is too blurry to identify, SKIP it rather than guess.
+- Bird image = 1-Bamboo. Always.
+- Single large character with NO 萬 = honour tile (wind/dragon).
+- Character with 萬 below = character/wan tile.
+- Circles: count every dot in the pattern.
+- Your array length MUST match your physical tile count from Step 1.`
         },
         {
           role: 'user',
           content: [
-            { type: 'text', text: 'First count how many physical tile faces are visible. Then identify each tile left to right. For bamboo tiles, count every individual stick carefully. Return ONLY the JSON array.' },
+            { type: 'text', text: 'Step 1: Count the physical tile faces (expect 13-14 for a hand). Step 2: Identify left to right. Remember: bird image = 1-Bamboo, duplicate tiles are normal (report every copy), count bamboo sticks and circle dots carefully, single large character without 萬 = honour tile. Return ONLY the JSON array with exactly as many entries as tiles you counted.' },
             { type: 'image_url', image_url: { url: image, detail: 'high' } }
           ]
         }
