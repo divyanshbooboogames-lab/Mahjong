@@ -497,7 +497,7 @@ function detectDoubles(groups, flowers, options = {}) {
     for (const g of pungs) {
       if (g.tiles[0].type === 'wind' && g.tiles[0].value === ownWind) {
         totalDoubles += 1;
-        reasons.push(`1× Pung of Own Wind`);
+        reasons.push('1× Pung of Own Wind');
       }
     }
 
@@ -505,7 +505,7 @@ function detectDoubles(groups, flowers, options = {}) {
     for (const g of pungs) {
       if (g.tiles[0].type === 'wind' && g.tiles[0].value === roundWind) {
         totalDoubles += 1;
-        reasons.push(`1× Pung of Round Wind`);
+        reasons.push('1× Pung of Round Wind');
       }
     }
   }
@@ -663,8 +663,8 @@ function detectDoubles(groups, flowers, options = {}) {
 
 // ============================================================
 // SCORING CARD LOOKUP (from the big table in the guide)
-// The table maps base points (rows 2-100) × number of doubles (columns 1-10)
-// Formula: basePoints × 2^doubles
+// The table maps base points (rows 2-100) x number of doubles (columns 1-10)
+// Formula: basePoints x 2^doubles
 // ============================================================
 
 function lookupScoringCard(basePoints, doubles) {
@@ -723,7 +723,7 @@ function scoreFlowers(flowers, ownWind, roundWind) {
     details.push('Own Flower Pair: 500');
   }
 
-  // Round flower pair: 500 (PDF page 6 — "Own or Round Flower Pair: 500")
+  // Round flower pair: 500 (PDF page 6)
   if (roundNum !== seatNum) {
     const roundFlowers = flowers.filter(f => f.value === roundNum);
     if (roundFlowers.length === 2) {
@@ -755,7 +755,6 @@ function detectFlowerDoubles(flowers, ownWind, roundWind) {
   const bouquetCount = (hasBouquet1 ? 1 : 0) + (hasBouquet2 ? 1 : 0);
 
   // Count own/round flowers from NON-bouquet sets only
-  // (a completed bouquet is its own bonus; its individual flowers don't double-count)
   const extraFlowers = flowers.filter(f => {
     if (f.set === 1 && hasBouquet1) return false;
     if (f.set === 2 && hasBouquet2) return false;
@@ -831,7 +830,6 @@ function detectFlowerDoubles(flowers, ownWind, roundWind) {
   }
 
   // 1 DOUBLE level: individual flowers (these are already in detectDoubles)
-  // No additional flower doubles at this level
   return { totalDoubles: 0, reasons: [], pointsForfeited: 0 };
 }
 
@@ -857,12 +855,10 @@ function analyzeHand(groups, flowers = [], options = {}) {
     ownWind, roundWind, isMahjong, isLastTile, isCleanSweep, isConcealed, isDrawnStanding
   });
 
-  // Add Goulash hand doubles (e.g., "4 Pungs in One Suit Only" = 3 doubles)
-  // These are detected by detectGoulashHand but must be added to doublesResult
+  // Add Goulash hand doubles
   let handDoubles = 0;
   const handDoubleReasons = [];
   if (gameMode === 'goulash' && goulashHands.length > 0) {
-    // Pick the best (highest doubles) Goulash hand
     const bestHand = goulashHands.reduce((best, h) => (h.doubles || 0) > (best.doubles || 0) ? h : best, goulashHands[0]);
     if (bestHand.doubles > 0) {
       handDoubles = bestHand.doubles;
@@ -877,19 +873,18 @@ function analyzeHand(groups, flowers = [], options = {}) {
   const flowerDoublesResult = detectFlowerDoubles(flowers, ownWind, roundWind);
 
   // === FLOWER DUAL-USE: Calculate BOTH paths, pick higher score ===
-  // Path A: Flowers as POINTS (500/1000 bonuses added to final)
+  // Path A: Flowers as POINTS
   let scoreA = goulashScore.basePoints;
   scoreA = lookupScoringCard(scoreA, baseDoublesTotal);
   if (isEast) scoreA *= 2;
   scoreA += flowerScore.points;
   const limitA = applyLimits(scoreA, isEast);
 
-  // Path B: Flowers as DOUBLES (forfeit point bonuses, gain extra doubles)
+  // Path B: Flowers as DOUBLES
   let scoreB = goulashScore.basePoints;
   const totalDoublesB = baseDoublesTotal + flowerDoublesResult.totalDoubles;
   scoreB = lookupScoringCard(scoreB, totalDoublesB);
   if (isEast) scoreB *= 2;
-  // No flower points added — they're used as doubles
   const limitB = applyLimits(scoreB, isEast);
 
   // Pick the better path
@@ -911,7 +906,6 @@ function analyzeHand(groups, flowers = [], options = {}) {
   // Calculate pre-East score for breakdown clarity
   var preEastScore = useFlowerDoubles ? limitB.score : limitA.score;
   if (isEast) {
-    // Reverse the East doubling to get pre-East value
     var scoreBeforeEast = useFlowerDoubles
       ? lookupScoringCard(goulashScore.basePoints, totalDoublesB)
       : lookupScoringCard(goulashScore.basePoints, baseDoublesTotal) + flowerScore.points;
