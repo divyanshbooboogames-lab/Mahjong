@@ -1058,8 +1058,8 @@
 
       showResults(result);
     } catch (err) {
-      console.error('[SCORE] Error:', err);
-      showToast('Scoring error. Try retaking the photo.');
+      console.error('[SCORE] Error:', err.message, err.stack);
+      showToast('Score error: ' + (err.message || 'Unknown').substring(0, 60));
     }
   }
 
@@ -1157,7 +1157,7 @@
   function showResults(result) {
     showScreen('screenResults');
 
-    var score = result.scoring.finalScore;
+    var score = (result.scoring && typeof result.scoring.finalScore === 'number') ? result.scoring.finalScore : 0;
     var validation = result.validation || {};
     var hasWarnings = validation.warnings && validation.warnings.length > 0;
 
@@ -1415,9 +1415,13 @@
 
   // ---- GLOBAL ERROR HANDLER ----
   window.onerror = function(msg, url, line) {
-    console.error('[GLOBAL]', msg, url, line);
+    console.error('[GLOBAL]', msg, 'line:', line, url);
     var toast = document.getElementById('toast');
-    if (toast) { toast.textContent = 'Something went wrong. Try again.'; toast.classList.add('show'); setTimeout(function() { toast.classList.remove('show'); }, 3000); }
+    var displayMsg = String(msg || 'Unknown error');
+    // Strip "Uncaught" prefix for cleaner display
+    displayMsg = displayMsg.replace(/^Uncaught\s+\w*:\s*/, '');
+    if (displayMsg.length > 80) displayMsg = displayMsg.substring(0, 80) + '...';
+    if (toast) { toast.textContent = 'Error: ' + displayMsg; toast.classList.add('show'); setTimeout(function() { toast.classList.remove('show'); }, 4000); }
     return true;
   };
 
