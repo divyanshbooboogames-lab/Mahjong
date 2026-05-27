@@ -8,11 +8,11 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     :root {
-      --neon-teal: #00FFD1;
-      --neon-pink: #FF2D7B;
-      --neon-gold: #FFD700;
-      --neon-purple: #7C3AED;
-      --dark-bg: #0A0A1A;
+      --neon-teal: #FF7EB3;
+      --neon-pink: #B794F6;
+      --neon-gold: #FFB8D0;
+      --neon-purple: #9F7AEA;
+      --dark-bg: #0F0A1E;
       --card-bg: rgba(255,255,255,0.06);
       --card-border: rgba(255,255,255,0.1);
       --gray: rgba(255,255,255,0.5);
@@ -31,7 +31,7 @@
       position: absolute; bottom: -60px; opacity: var(--o, 0.06);
       animation: tileRise var(--dur, 20s) linear infinite;
       font-size: 40px; color: rgba(255,255,255,0.15);
-      text-shadow: 0 0 20px rgba(0,255,209,0.3);
+      text-shadow: 0 0 20px rgba(183,148,246,0.3);
       transform: rotate(0deg);
     }
     @keyframes tileRise {
@@ -49,9 +49,9 @@
     /* Aurora gradient background */
     body::before {
       content: ''; position: fixed; inset: 0; z-index: -1;
-      background: radial-gradient(ellipse at 20% 50%, rgba(0,255,209,0.08) 0%, transparent 60%),
-                  radial-gradient(ellipse at 80% 20%, rgba(124,58,237,0.08) 0%, transparent 60%),
-                  radial-gradient(ellipse at 50% 90%, rgba(255,45,123,0.06) 0%, transparent 60%),
+      background: radial-gradient(ellipse at 20% 50%, rgba(255,126,179,0.1) 0%, transparent 60%),
+                  radial-gradient(ellipse at 80% 20%, rgba(159,122,234,0.1) 0%, transparent 60%),
+                  radial-gradient(ellipse at 50% 90%, rgba(183,148,246,0.08) 0%, transparent 60%),
                   var(--dark-bg);
     }
 
@@ -68,7 +68,7 @@
       font-family: 'Bungee Shade', cursive; font-size: 28px;
       background: linear-gradient(135deg, var(--neon-teal), var(--neon-gold));
       -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-      filter: drop-shadow(0 0 20px rgba(0,255,209,0.3));
+      filter: drop-shadow(0 0 20px rgba(255,126,179,0.3));
     }
     .logo-sub {
       font-family: 'Bangers', cursive; font-size: 16px; letter-spacing: 4px;
@@ -93,15 +93,15 @@
     /* Select dropdown */
     .sel {
       width: 100%; padding: 12px 16px; border-radius: 12px;
-      background: rgba(0,255,209,0.08); border: 1px solid rgba(0,255,209,0.2);
+      background: rgba(255,126,179,0.08); border: 1px solid rgba(255,126,179,0.2);
       color: white; font-family: 'Poppins', sans-serif; font-size: 14px; font-weight: 600;
       appearance: none; cursor: pointer; outline: none;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2300FFD1'%3E%3Cpath d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23FF7EB3'%3E%3Cpath d='M6 8L1 3h10z'/%3E%3C/svg%3E");
       background-repeat: no-repeat; background-position: right 14px center;
       transition: border-color 0.2s;
     }
     .sel:focus { border-color: var(--neon-teal); }
-    .sel option { background: #1a1a2e; color: white; }
+    .sel option { background: #1a0f2e; color: white; }
 
     /* Wind buttons */
     .wind-row { display: flex; gap: 8px; }
@@ -111,10 +111,10 @@
       font-family: 'Bangers', cursive; font-size: 15px; letter-spacing: 1px;
       cursor: pointer; transition: all 0.25s; text-align: center;
     }
-    .wind-btn:hover { border-color: rgba(0,255,209,0.3); }
+    .wind-btn:hover { border-color: rgba(255,126,179,0.3); }
     .wind-btn.active {
-      background: rgba(0,255,209,0.15); border-color: var(--neon-teal);
-      color: var(--neon-teal); box-shadow: 0 0 15px rgba(0,255,209,0.2);
+      background: rgba(255,126,179,0.15); border-color: var(--neon-teal);
+      color: var(--neon-teal); box-shadow: 0 0 15px rgba(255,126,179,0.2);
     }
 
     /* Toggle switches */
@@ -125,30 +125,30 @@
       font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.25s;
       user-select: none;
     }
-    .toggle-chip:hover { border-color: rgba(255,215,0,0.3); }
+    .toggle-chip:hover { border-color: rgba(255,184,208,0.3); }
     .toggle-chip.active {
-      background: rgba(255,215,0,0.15); border-color: var(--neon-gold);
-      color: var(--neon-gold); box-shadow: 0 0 12px rgba(255,215,0,0.15);
+      background: rgba(255,184,208,0.15); border-color: var(--neon-gold);
+      color: var(--neon-gold); box-shadow: 0 0 12px rgba(255,184,208,0.15);
     }
 
     /* CTA button */
     .btn-scan {
       width: 100%; padding: 16px; margin-top: 24px; border: none; border-radius: 14px;
-      background: linear-gradient(135deg, var(--neon-teal), #0D9B76);
+      background: linear-gradient(135deg, var(--neon-teal), #D4609A);
       color: #0A0A1A; font-family: 'Bangers', cursive; font-size: 20px; letter-spacing: 2px;
       cursor: pointer; position: relative; overflow: hidden;
       transition: transform 0.15s, box-shadow 0.2s;
-      box-shadow: 0 4px 25px rgba(0,255,209,0.3);
+      box-shadow: 0 4px 25px rgba(255,126,179,0.3);
     }
-    .btn-scan:hover { transform: translateY(-2px); box-shadow: 0 6px 30px rgba(0,255,209,0.4); }
+    .btn-scan:hover { transform: translateY(-2px); box-shadow: 0 6px 30px rgba(255,126,179,0.4); }
     .btn-scan:active { transform: scale(0.97); }
 
     .btn-pink {
       width: 100%; padding: 14px; border: none; border-radius: 14px;
-      background: linear-gradient(135deg, var(--neon-pink), #D4508B);
+      background: linear-gradient(135deg, var(--neon-pink), #8B6FC0);
       color: white; font-family: 'Bangers', cursive; font-size: 17px; letter-spacing: 2px;
       cursor: pointer; transition: transform 0.15s;
-      box-shadow: 0 4px 20px rgba(255,45,123,0.3);
+      box-shadow: 0 4px 20px rgba(183,148,246,0.3);
     }
     .btn-pink:hover { transform: translateY(-2px); }
     .btn-pink:active { transform: scale(0.97); }
@@ -163,7 +163,7 @@
 
     /* ---- CAMERA / SCAN ---- */
     .camera-zone {
-      width: 100%; aspect-ratio: 4/3; border: 2px dashed rgba(0,255,209,0.3);
+      width: 100%; aspect-ratio: 4/3; border: 2px dashed rgba(255,126,179,0.3);
       border-radius: 16px; display: flex; align-items: center; justify-content: center;
       cursor: pointer; position: relative; overflow: hidden;
       background: rgba(0,0,0,0.3); transition: border-color 0.3s;
@@ -202,8 +202,8 @@
       font-size: 9px; font-weight: 600; padding: 2px 8px; border-radius: 10px;
       text-transform: uppercase; letter-spacing: 0.5px; transition: all 0.2s;
     }
-    .tile-group-label.exposed { background: rgba(239,68,68,0.25); color: #FF6B6B; }
-    .tile-group-label.concealed { background: rgba(0,255,209,0.2); color: #00FFD1; }
+    .tile-group-label.exposed { background: rgba(255,126,179,0.2); color: #FF7EB3; }
+    .tile-group-label.concealed { background: rgba(183,148,246,0.2); color: #B794F6; }
     .tile-chip {
       width: 42px; height: 54px; border: 2px solid rgba(255,255,255,0.2);
       border-radius: 8px; background: rgba(255,255,255,0.08);
@@ -214,8 +214,8 @@
       transition: all 0.2s;
     }
     .tile-chip.face-down {
-      background: linear-gradient(135deg, #1a365d, #2d3748);
-      border-color: rgba(0,255,209,0.3);
+      background: linear-gradient(135deg, #2d1b4e, #1e1433);
+      border-color: rgba(255,126,179,0.3);
     }
     .tile-chip.face-down span { visibility: hidden; }
     @keyframes tileFlip { from { transform: rotateY(90deg); opacity: 0; } to { transform: rotateY(0); opacity: 1; } }
@@ -224,7 +224,7 @@
     .tile-chip-wrap { position: relative; display: inline-flex; }
     .tile-del {
       position: absolute; top: -6px; right: -6px; width: 18px; height: 18px;
-      border-radius: 50%; background: #EF4444; color: #fff; border: 2px solid var(--dark-bg);
+      border-radius: 50%; background: #FF8FA3; color: #fff; border: 2px solid var(--dark-bg);
       font-size: 11px; line-height: 14px; text-align: center; cursor: pointer;
       display: none; z-index: 2; padding: 0; font-weight: 700;
     }
@@ -239,7 +239,7 @@
     }
     .btn-add-tile {
       font-size: 11px; font-weight: 700; padding: 5px 14px; border-radius: 14px;
-      background: rgba(0,255,209,0.15); color: var(--neon-teal); border: 1px solid rgba(0,255,209,0.3);
+      background: rgba(255,126,179,0.15); color: var(--neon-teal); border: 1px solid rgba(255,126,179,0.3);
       cursor: pointer; transition: all 0.2s;
     }
     .btn-add-tile:active { transform: scale(0.95); }
@@ -248,7 +248,7 @@
       background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.6); border: 1px solid rgba(255,255,255,0.12);
       cursor: pointer; transition: all 0.2s;
     }
-    .btn-edit-tiles.active { background: rgba(255,45,123,0.15); color: var(--neon-pink); border-color: rgba(255,45,123,0.3); }
+    .btn-edit-tiles.active { background: rgba(183,148,246,0.15); color: var(--neon-pink); border-color: rgba(183,148,246,0.3); }
 
     /* Tile picker modal */
     .tile-picker-overlay {
@@ -257,7 +257,7 @@
     }
     .tile-picker-overlay.open { display: flex; }
     .tile-picker {
-      background: #1a1a2e; border: 1px solid rgba(255,255,255,0.15); border-radius: 16px;
+      background: #1a0f2e; border: 1px solid rgba(255,255,255,0.15); border-radius: 16px;
       padding: 20px; width: 92%; max-width: 360px; max-height: 80vh; overflow-y: auto;
     }
     .tile-picker h3 { font-size: 14px; text-align: center; margin-bottom: 12px; color: var(--neon-teal); }
@@ -272,7 +272,7 @@
     }
     .picker-btn span { font-size: 7px; opacity: 0.6; margin-top: 1px; }
     .picker-btn:active { transform: scale(0.9); }
-    .picker-btn:hover { border-color: var(--neon-teal); background: rgba(0,255,209,0.1); }
+    .picker-btn:hover { border-color: var(--neon-teal); background: rgba(255,126,179,0.1); }
     .picker-cancel {
       display: block; width: 100%; margin-top: 12px; padding: 10px;
       background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
@@ -290,7 +290,7 @@
       font-size: 13px;
     }
     .scan-status .spinner {
-      width: 36px; height: 36px; border: 3px solid rgba(0,255,209,0.2);
+      width: 36px; height: 36px; border: 3px solid rgba(255,126,179,0.2);
       border-top-color: var(--neon-teal); border-radius: 50%;
       animation: spin 0.8s linear infinite; margin: 0 auto 12px;
     }
@@ -303,9 +303,9 @@
     .score-display { text-align: center; padding: 20px 0; }
     .score-number {
       font-family: 'Bungee Shade', cursive; font-size: 56px;
-      background: linear-gradient(135deg, var(--neon-gold), #F59E0B, var(--neon-gold));
+      background: linear-gradient(135deg, var(--neon-gold), #FF7EB3, var(--neon-gold));
       -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-      filter: drop-shadow(0 0 25px rgba(255,215,0,0.4));
+      filter: drop-shadow(0 0 25px rgba(255,126,179,0.4));
       animation: scoreReveal 0.6s ease backwards;
     }
     @keyframes scoreReveal { from { transform: scale(0.3); opacity: 0; } to { transform: scale(1); opacity: 1; } }
@@ -317,7 +317,7 @@
     }
     .limit-badge {
       display: inline-block; padding: 4px 16px; border-radius: 20px; margin-top: 8px;
-      background: rgba(255,215,0,0.15); border: 1px solid var(--neon-gold);
+      background: rgba(255,184,208,0.15); border: 1px solid var(--neon-gold);
       color: var(--neon-gold); font-family: 'Bangers', cursive; font-size: 14px; letter-spacing: 2px;
     }
 
@@ -743,7 +743,7 @@
       } catch (parseErr) {
         var errMsg = 'Server error (HTTP ' + response.status + ')';
         var errTip = response.status === 502 ? 'Server is restarting — tap Retake in a few seconds' : 'Unexpected server response — tap Retake to try again';
-        status.innerHTML = '<div class="scan-status" style="color:#EF4444;">&#9888; ' + errMsg + '<br><span style="font-size:11px;opacity:0.6;">' + errTip + '</span></div>';
+        status.innerHTML = '<div class="scan-status" style="color:#FF8FA3;">&#9888; ' + errMsg + '<br><span style="font-size:11px;opacity:0.6;">' + errTip + '</span></div>';
         buttons.style.display = 'flex';
         document.getElementById('btnCalculate').style.display = 'none';
         sfx('error');
@@ -755,7 +755,7 @@
         if (data.error && data.error.includes('API key')) tip = 'Server configuration issue — contact support';
         if (data.error && data.error.includes('rate limit')) tip = 'Wait a moment before scanning again';
         if (data.error && data.error.includes('timed out')) tip = 'Try a clearer photo with fewer tiles';
-        status.innerHTML = '<div class="scan-status" style="color:#EF4444;">&#9888; ' + escHTML(data.error || 'Scan failed') + '<br><span style="font-size:11px;opacity:0.6;">' + escHTML(tip) + '</span></div>';
+        status.innerHTML = '<div class="scan-status" style="color:#FF8FA3;">&#9888; ' + escHTML(data.error || 'Scan failed') + '<br><span style="font-size:11px;opacity:0.6;">' + escHTML(tip) + '</span></div>';
         buttons.style.display = 'flex';
         document.getElementById('btnCalculate').style.display = 'none';
         sfx('error');
@@ -774,7 +774,7 @@
       var scanWarnings = data.warnings && data.warnings.length > 0 ? data.warnings : [];
       var warnHTML = '';
       if (scanWarnings.length > 0) {
-        warnHTML = '<div style="color:#FF6B6B;font-size:11px;margin-top:4px;">' + scanWarnings.map(function(w) { return '&#9888; ' + escHTML(w); }).join('<br>') + '</div>';
+        warnHTML = '<div style="color:#FF8FA3;font-size:11px;margin-top:4px;">' + scanWarnings.map(function(w) { return '&#9888; ' + escHTML(w); }).join('<br>') + '</div>';
       }
 
       // Tile count reasonableness check
@@ -782,10 +782,10 @@
       var countColor = 'var(--neon-teal)';
       var countNote = '';
       if (nonFlowerCount < 13) {
-        countColor = '#FFD700';
+        countColor = '#FFB8D0';
         countNote = ' (fewer than 13 — may be incomplete)';
       } else if (nonFlowerCount > 14) {
-        countColor = '#FF6B6B';
+        countColor = '#FF8FA3';
         countNote = ' (more than 14 — AI may have hallucinated extra tiles)';
       }
 
@@ -800,7 +800,7 @@
       var errMsg = 'Scan failed';
       var errTip = 'Check your internet connection and try again';
       if (err.name === 'AbortError') { errMsg = 'Request timed out'; errTip = 'Server may be busy — tap Retake to try again'; }
-      status.innerHTML = '<div class="scan-status" style="color:#EF4444;">&#9888; ' + errMsg + '<br><span style="font-size:11px;opacity:0.6;">' + errTip + '</span></div>';
+      status.innerHTML = '<div class="scan-status" style="color:#FF8FA3;">&#9888; ' + errMsg + '<br><span style="font-size:11px;opacity:0.6;">' + errTip + '</span></div>';
       buttons.style.display = 'flex';
       document.getElementById('btnCalculate').style.display = 'none';
       sfx('error');
@@ -809,12 +809,12 @@
 
   function tileChipHTML(t, faceDown, tileIndex) {
     var sym = '', label = '', col = '#E0E0E0';
-    if (t.suit === 'characters') { sym = CHAR_MAP.characters[t.value] || '?'; label = t.value + ' Char'; col = '#FF6B6B'; }
-    else if (t.suit === 'bamboo') { sym = t.value; label = t.value + ' Bam'; col = '#00FFD1'; }
-    else if (t.suit === 'circles') { sym = t.value; label = t.value + ' Dot'; col = '#6BC5FF'; }
-    else if (t.type === 'wind') { sym = CHAR_MAP.winds[t.value] || '?'; label = (t.value || '?').charAt(0).toUpperCase() + ' Wind'; col = '#E0E0E0'; }
-    else if (t.type === 'dragon') { sym = CHAR_MAP.dragons[t.value] || '?'; label = (t.value || '?').charAt(0).toUpperCase() + ' Drg'; col = t.value === 'green' ? '#00FFD1' : t.value === 'white' ? '#E0E0E0' : '#FF6B6B'; }
-    else if (t.type === 'flower') { sym = '\u{1F338}'; label = 'Flower'; col = '#F9A8D4'; }
+    if (t.suit === 'characters') { sym = CHAR_MAP.characters[t.value] || '?'; label = t.value + ' Char'; col = '#FF8FA3'; }
+    else if (t.suit === 'bamboo') { sym = t.value; label = t.value + ' Bam'; col = '#7ECFB3'; }
+    else if (t.suit === 'circles') { sym = t.value; label = t.value + ' Dot'; col = '#93C5FD'; }
+    else if (t.type === 'wind') { sym = CHAR_MAP.winds[t.value] || '?'; label = (t.value || '?').charAt(0).toUpperCase() + ' Wind'; col = '#E0D4F5'; }
+    else if (t.type === 'dragon') { sym = CHAR_MAP.dragons[t.value] || '?'; label = (t.value || '?').charAt(0).toUpperCase() + ' Drg'; col = t.value === 'green' ? '#7ECFB3' : t.value === 'white' ? '#E0D4F5' : '#FF8FA3'; }
+    else if (t.type === 'flower') { sym = '\u{1F338}'; label = 'Flower'; col = '#DDB4F0'; }
     // Escape all dynamic values to prevent XSS from AI response data
     sym = escHTML(sym);
     label = escHTML(label);
@@ -910,8 +910,8 @@
       });
       var leftoverLabel = document.createElement('div');
       leftoverLabel.className = 'tile-group-label';
-      leftoverLabel.style.background = 'rgba(239,68,68,0.25)';
-      leftoverLabel.style.color = '#FF6B6B';
+      leftoverLabel.style.background = 'rgba(255,143,163,0.2)';
+      leftoverLabel.style.color = '#FF8FA3';
       leftoverLabel.textContent = 'UNGROUPED';
       leftoverGroup.appendChild(leftoverRow);
       leftoverGroup.appendChild(leftoverLabel);
@@ -983,8 +983,8 @@
       leftover.forEach(function(t) { leftoverRow.innerHTML += tileChipHTML(t, false); });
       var leftoverLabel = document.createElement('div');
       leftoverLabel.className = 'tile-group-label';
-      leftoverLabel.style.background = 'rgba(239,68,68,0.25)';
-      leftoverLabel.style.color = '#FF6B6B';
+      leftoverLabel.style.background = 'rgba(255,143,163,0.2)';
+      leftoverLabel.style.color = '#FF8FA3';
       leftoverLabel.textContent = 'UNGROUPED';
       leftoverGroup.appendChild(leftoverRow);
       leftoverGroup.appendChild(leftoverLabel);
@@ -1175,7 +1175,7 @@
     document.getElementById('handName').textContent = handName;
     // Color the hand name red if incomplete
     var hnEl = document.getElementById('handName');
-    hnEl.style.color = validation.isComplete ? 'var(--neon-teal)' : '#FF6B6B';
+    hnEl.style.color = validation.isComplete ? 'var(--neon-teal)' : '#FF8FA3';
 
     // Limit badge
     var lb = document.getElementById('limitBadge');
@@ -1285,8 +1285,8 @@
       row.className = 'breakdown-row';
       row.style.animationDelay = (0.2 + i * 0.08) + 's';
       var valClass = r.warn ? 'value' : ('value' + (r.gold ? ' gold' : ''));
-      var valStyle = r.warn ? ' style="color:#FF6B6B;"' : '';
-      var labelStyle = r.warn ? ' style="color:#FF6B6B;font-size:12px;"' : '';
+      var valStyle = r.warn ? ' style="color:#FF8FA3;"' : '';
+      var labelStyle = r.warn ? ' style="color:#FF8FA3;font-size:12px;"' : '';
       row.innerHTML = '<span class="label"' + labelStyle + '>' + escHTML(r.label) + '</span><span class="' + valClass + '"' + valStyle + '>' + escHTML(r.value) + '</span>';
       bd.appendChild(row);
     });
@@ -1318,7 +1318,7 @@
     canvas.height = window.innerHeight;
     var ctx = canvas.getContext('2d');
     var particles = [];
-    var colors = ['#00FFD1','#FF2D7B','#FFD700','#7C3AED','#3B82F6','#F59E0B'];
+    var colors = ['#FF7EB3','#B794F6','#FFB8D0','#9F7AEA','#F9A8D4','#DDA0DD'];
     for (var i = 0; i < 100; i++) {
       var angle = (Math.PI * 2 * i) / 100 + (Math.random() - 0.5) * 0.3;
       var speed = 3 + Math.random() * 7;
@@ -1360,7 +1360,7 @@
   function buildBG() {
     var bg = document.getElementById('bgPattern');
     var syms = ['\u6771','\u5357','\u897f','\u5317','\u767c','\u4e2d','\u842c','\u7af9','\u25cf','\u4e00','\u4e5d'];
-    var neonColors = ['rgba(0,255,209,0.3)','rgba(255,45,123,0.3)','rgba(255,215,0,0.3)','rgba(124,58,237,0.3)'];
+    var neonColors = ['rgba(255,126,179,0.3)','rgba(183,148,246,0.3)','rgba(255,184,208,0.3)','rgba(159,122,234,0.3)'];
     for (var i = 0; i < 15; i++) {
       var el = document.createElement('div');
       el.className = 'tile-float';
@@ -1533,10 +1533,10 @@
     var countColor = 'var(--neon-teal)';
     var countNote = '';
     if (nonFlowerCount < 13) {
-      countColor = '#FFD700';
+      countColor = '#FFB8D0';
       countNote = ' (fewer than 13 — may be incomplete)';
     } else if (nonFlowerCount > 14) {
-      countColor = '#FF6B6B';
+      countColor = '#FF8FA3';
       countNote = ' (more than 14 — remove extra tiles)';
     }
     status.innerHTML = '<div class="scan-status" style="color:' + countColor + ';">&#9989; ' + total + ' tiles' + escHTML(countNote) + '</div>';
@@ -1551,9 +1551,9 @@
     var txt = nonFlower + ' tile' + (nonFlower !== 1 ? 's' : '');
     if (flowers > 0) txt += ' + ' + flowers + ' flower' + (flowers !== 1 ? 's' : '');
     var col = 'rgba(255,255,255,0.6)';
-    if (nonFlower === 14 || nonFlower === 13) col = '#00FFD1';
-    else if (nonFlower < 13) col = '#FFD700';
-    else if (nonFlower > 14) col = '#FF6B6B';
+    if (nonFlower === 14 || nonFlower === 13) col = '#FF7EB3';
+    else if (nonFlower < 13) col = '#FFB8D0';
+    else if (nonFlower > 14) col = '#FF8FA3';
     badge.style.color = col;
     badge.style.borderColor = col;
     badge.textContent = txt;
@@ -1577,7 +1577,7 @@
     // Characters 1-9
     var html = '';
     for (var i = 1; i <= 9; i++) {
-      html += '<button class="picker-btn" onclick="addTileFromPicker({suit:\'characters\',value:' + i + '})" style="color:#FF6B6B;">' + (chars[i] || i) + '<span>' + i + ' Char</span></button>';
+      html += '<button class="picker-btn" onclick="addTileFromPicker({suit:\'characters\',value:' + i + '})" style="color:#FF8FA3;">' + (chars[i] || i) + '<span>' + i + ' Char</span></button>';
     }
     document.getElementById('pickerChars').innerHTML = html;
 
@@ -1585,14 +1585,14 @@
     html = '';
     for (var i = 1; i <= 9; i++) {
       var sym = i === 1 ? '🐦' : i;
-      html += '<button class="picker-btn" onclick="addTileFromPicker({suit:\'bamboo\',value:' + i + '})" style="color:#00FFD1;">' + sym + '<span>' + i + ' Bam</span></button>';
+      html += '<button class="picker-btn" onclick="addTileFromPicker({suit:\'bamboo\',value:' + i + '})" style="color:#7ECFB3;">' + sym + '<span>' + i + ' Bam</span></button>';
     }
     document.getElementById('pickerBamboo').innerHTML = html;
 
     // Circles 1-9
     html = '';
     for (var i = 1; i <= 9; i++) {
-      html += '<button class="picker-btn" onclick="addTileFromPicker({suit:\'circles\',value:' + i + '})" style="color:#6BC5FF;">' + i + '<span>' + i + ' Dot</span></button>';
+      html += '<button class="picker-btn" onclick="addTileFromPicker({suit:\'circles\',value:' + i + '})" style="color:#93C5FD;">' + i + '<span>' + i + ' Dot</span></button>';
     }
     document.getElementById('pickerCircles').innerHTML = html;
 
@@ -1608,7 +1608,7 @@
     // Dragons
     html = '';
     var dragons = ['red','green','white'];
-    var drgCols = ['#FF6B6B','#00FFD1','#E0E0E0'];
+    var drgCols = ['#FF8FA3','#7ECFB3','#E0D4F5'];
     dragons.forEach(function(d, di) {
       html += '<button class="picker-btn" onclick="addTileFromPicker({type:\'dragon\',value:\'' + d + '\'})" style="color:' + drgCols[di] + ';">' + (dragonChars[d] || d.charAt(0).toUpperCase()) + '<span>' + d.charAt(0).toUpperCase() + ' Drg</span></button>';
     });
@@ -1619,7 +1619,7 @@
     var flowerNames = {1:{1:'Spring',2:'Summer',3:'Autumn',4:'Winter'},2:{1:'Plum',2:'Orchid',3:'Chrysan.',4:'Bamboo'}};
     for (var s = 1; s <= 2; s++) {
       for (var v = 1; v <= 4; v++) {
-        html += '<button class="picker-btn" onclick="addTileFromPicker({type:\'flower\',set:' + s + ',value:' + v + '})" style="color:#F9A8D4;">🌸<span>' + escHTML(flowerNames[s][v]) + '</span></button>';
+        html += '<button class="picker-btn" onclick="addTileFromPicker({type:\'flower\',set:' + s + ',value:' + v + '})" style="color:#DDB4F0;">🌸<span>' + escHTML(flowerNames[s][v]) + '</span></button>';
       }
     }
     document.getElementById('pickerFlowers').innerHTML = html;
