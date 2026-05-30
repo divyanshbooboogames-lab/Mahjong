@@ -867,10 +867,9 @@
 
       group._tileIndices = [];
       group.tiles.forEach(function(t, ti) {
-        var faceDown = !group.exposed && ti === 0 && group.tiles.length > 2;
         var idx = findTileIndex(t, usedIdx);
         group._tileIndices.push(idx);
-        tilesRow.innerHTML += tileChipHTML(t, faceDown, idx);
+        tilesRow.innerHTML += tileChipHTML(t, false, idx);
       });
 
       var labelEl = document.createElement('div');
@@ -888,9 +887,8 @@
         labelEl.textContent = group.exposed ? 'EXPOSED' : 'CONCEALED';
         tilesRow.innerHTML = '';
         group.tiles.forEach(function(t, ti) {
-          var faceDown = !group.exposed && ti === 0 && group.tiles.length > 2;
           var idx2 = group._tileIndices ? group._tileIndices[ti] : -1;
-          tilesRow.innerHTML += tileChipHTML(t, faceDown, idx2);
+          tilesRow.innerHTML += tileChipHTML(t, false, idx2);
         });
         sfx('click');
       });
@@ -963,8 +961,7 @@
       var tilesRow = document.createElement('div');
       tilesRow.className = 'tile-group-tiles';
       group.tiles.forEach(function(t, ti) {
-        var faceDown = !group.exposed && ti === 0 && group.tiles.length > 2;
-        tilesRow.innerHTML += tileChipHTML(t, faceDown);
+        tilesRow.innerHTML += tileChipHTML(t, false);
       });
       var labelEl = document.createElement('div');
       labelEl.className = 'tile-group-label ' + (group.exposed ? 'exposed' : 'concealed');
