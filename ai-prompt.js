@@ -69,6 +69,17 @@ FINAL CHECKS:
 - Circles: count every dot in the pattern.
 - Your array length MUST match your physical tile count from Step 1.`;
 
-const USER_PROMPT = 'Step 1: Count the physical tile faces (expect 13-14 for a hand). Step 2: Identify left to right. Remember: bird image = 1-Bamboo, duplicate tiles are normal (report every copy), count bamboo sticks and circle dots carefully, single large character without wan below = honour tile. Return ONLY the JSON array with exactly as many entries as tiles you counted.';
+const USER_PROMPT = `Step 1: Count the physical tile faces (expect 13-14 for a hand).
+Step 2: For EACH tile left to right, briefly note what you see before identifying:
+- If you see a bird/peacock image → 1-Bamboo
+- If you see parallel green sticks → count them carefully (2,3,4,5,6,7,8, or 9 Bamboo)
+- If you see colored circles/dots → count every individual dot in the pattern (1 through 9 Circles)
+- If you see a Chinese numeral with 萬 below → count the numeral (1-9 Characters)
+- If you see ONE large character filling the tile with NO 萬 → honour tile (wind or dragon)
+- Duplicate tiles are NORMAL — report every copy
+
+For circle tiles specifically: 1=one large circle, 2=two circles stacked, 3=three in diagonal, 4=four in a square, 5=five in X pattern, 6=six in 2x3 grid, 7=seven in 2+3+2, 8=eight in two columns of 4, 9=nine in 3x3 grid.
+
+Return ONLY the JSON array. Array length MUST equal your tile count from Step 1.`;
 
 module.exports = { SYSTEM_PROMPT, USER_PROMPT };

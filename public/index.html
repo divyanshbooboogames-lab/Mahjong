@@ -489,7 +489,7 @@
       <div class="glass">
         <div class="setting-group">
           <div class="setting-label">GAME MODE</div>
-          <select class="sel" id="setGameMode">
+          <select class="sel" id="setGameMode" onchange="saveSettings()">
             <option value="east_round">East Round</option>
             <option value="full_game">Full Game</option>
             <option value="goulash">Goulash</option>
@@ -668,11 +668,13 @@
     btn.classList.add('active');
     if (type === 'round') settings.roundWind = wind;
     else settings.seatWind = wind;
+    saveSettings();
     sfx('click');
   }
 
   function toggleChip(el) {
     el.classList.toggle('active');
+    saveSettings();
     sfx('click');
   }
 
@@ -682,7 +684,55 @@
     settings.isConcealed = document.getElementById('togConcealed').classList.contains('active');
     settings.isLastTile = document.getElementById('togLastTile').classList.contains('active');
     settings.isCleanSweep = document.getElementById('togCleanSweep').classList.contains('active');
+    saveSettings();
   }
+
+  // Persist settings across sessions
+  function saveSettings() {
+    try {
+      readSettingsQuiet();
+      localStorage.setItem('lm_settings', JSON.stringify(settings));
+    } catch(e) {}
+  }
+  function readSettingsQuiet() {
+    settings.gameMode = document.getElementById('setGameMode').value;
+    settings.isMahjong = document.getElementById('togMahjong').classList.contains('active');
+    settings.isConcealed = document.getElementById('togConcealed').classList.contains('active');
+    settings.isLastTile = document.getElementById('togLastTile').classList.contains('active');
+    settings.isCleanSweep = document.getElementById('togCleanSweep').classList.contains('active');
+  }
+  function loadSettings() {
+    try {
+      var saved = localStorage.getItem('lm_settings');
+      if (!saved) return;
+      var s = JSON.parse(saved);
+      if (s.gameMode) { settings.gameMode = s.gameMode; document.getElementById('setGameMode').value = s.gameMode; }
+      if (s.roundWind) {
+        settings.roundWind = s.roundWind;
+        var rr = document.getElementById('roundWindRow');
+        rr.querySelectorAll('.wind-btn').forEach(function(b) {
+          b.classList.toggle('active', b.getAttribute('data-wind') === s.roundWind);
+        });
+      }
+      if (s.seatWind) {
+        settings.seatWind = s.seatWind;
+        var sr = document.getElementById('seatWindRow');
+        sr.querySelectorAll('.wind-btn').forEach(function(b) {
+          b.classList.toggle('active', b.getAttribute('data-wind') === s.seatWind);
+        });
+      }
+      var toggleMap = { isMahjong:'togMahjong', isConcealed:'togConcealed', isLastTile:'togLastTile', isCleanSweep:'togCleanSweep' };
+      for (var key in toggleMap) {
+        if (typeof s[key] === 'boolean') {
+          settings[key] = s[key];
+          var el = document.getElementById(toggleMap[key]);
+          if (el) { if (s[key]) el.classList.add('active'); else el.classList.remove('active'); }
+        }
+      }
+    } catch(e) {}
+  }
+  // Load on startup
+  loadSettings();
 
   // ---- CAMERA ----
   function goToScan() {
@@ -916,7 +966,7 @@
     var chip = '<div class="' + cls + '" style="color:' + col + ';"><span style="font-size:16px;display:block;line-height:1.1;">' + sym + '</span><span style="font-size:7px;opacity:0.7;display:block;line-height:1;margin-top:2px;color:' + col + ';">' + label + '</span></div>';
     // Wrap with delete button if tile index provided
     if (typeof tileIndex === 'number' && tileIndex >= 0) {
-      chip = '<div class="tile-chip-wrap">' + chip + '<button class="tile-del" onclick="event.stopPropagation();removeTile(' + tileIndex + ');">&times;</button></div>';
+      chip = '<div class="tile-chip-wrap" onclick="event.stopPropagation();startReplaceTile(' + tileIndex + ');">' + chip + '<button class="tile-del" onclick="event.stopPropagation();removeTile(' + tileIndex + ');">&times;</button></div>';
     }
     return chip;
   }
@@ -1530,7 +1580,7 @@
   <!-- Tile Picker Modal -->
   <div class="tile-picker-overlay" id="tilePickerOverlay" onclick="if(event.target===this)closeTilePicker()">
     <div class="tile-picker">
-      <h3>Add a Tile</h3>
+      <h3 id="pickerTitle">Add a Tile</h3>
       <div class="picker-section">
         <div class="picker-section-label">Characters (萬)</div>
         <div class="picker-grid" id="pickerChars"></div>
@@ -1561,6 +1611,16 @@
 
   <script>
   // ---- TILE EDITOR ----
+  var replaceTileIndex = -1; // -1 = add mode, >= 0 = replace mode
+
+  function startReplaceTile(tileIndex) {
+    if (editMode) return; // in edit mode, clicks are for delete buttons
+    if (typeof tileIndex !== 'number' || tileIndex < 0) return;
+    replaceTileIndex = tileIndex;
+    document.getElementById('pickerTitle').textContent = 'Replace Tile';
+    openTilePicker();
+  }
+
   function toggleEditMode() {
     editMode = !editMode;
     var btn = document.getElementById('btnEditToggle');
@@ -1586,7 +1646,20 @@
 
   function addTileFromPicker(tile) {
     if (!scannedTiles) scannedTiles = [];
-    // Warn if hand is getting unreasonably large
+
+    // Replace mode: swap tile at index
+    if (replaceTileIndex >= 0 && replaceTileIndex < scannedTiles.length) {
+      scannedTiles[replaceTileIndex] = tile;
+      replaceTileIndex = -1;
+      closeTilePicker();
+      refreshTileDisplay();
+      showToast('Tile replaced');
+      sfx('click');
+      return;
+    }
+
+    // Add mode: append tile
+    replaceTileIndex = -1;
     var nonFlower = scannedTiles.filter(function(t) { return t.type !== 'flower'; }).length;
     var isFlower = tile.type === 'flower';
     if (!isFlower && nonFlower >= 18) {
@@ -1651,12 +1724,16 @@
   }
 
   function openTilePicker() {
+    if (replaceTileIndex < 0) {
+      document.getElementById('pickerTitle').textContent = 'Add a Tile';
+    }
     buildPickerButtons();
     document.getElementById('tilePickerOverlay').classList.add('open');
   }
 
   function closeTilePicker() {
     document.getElementById('tilePickerOverlay').classList.remove('open');
+    replaceTileIndex = -1;
   }
 
   function buildPickerButtons() {
