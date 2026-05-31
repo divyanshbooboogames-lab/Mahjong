@@ -981,7 +981,7 @@
       img.src = e.target.result;
       zone.appendChild(img);
       // Compress before scanning — phone photos can be 10MB+
-      compressImage(e.target.result, 1600, 0.8).then(function(compressed) {
+      compressImage(e.target.result, 2400, 0.85).then(function(compressed) {
         scanWithAI(compressed);
       });
     };
@@ -1105,8 +1105,18 @@
       }
 
       scannedTiles = data.tiles;
+
+      // Run smart auto-correction to fix common AI errors
       try {
-        displayTiles(data.tiles, tilesGrid);
+        var autoFix = smartAutoFix(data.tiles);
+        if (autoFix.fixes.length > 0) {
+          scannedTiles = autoFix.tiles;
+          console.log('[AUTO-FIX] Corrected:', autoFix.fixes.join(', '));
+        }
+      } catch(fixErr) { console.warn('[AUTO-FIX] Error:', fixErr); }
+
+      try {
+        displayTiles(scannedTiles, tilesGrid);
       } catch (displayErr) {
         console.error('[DISPLAY] Error:', displayErr);
         tilesGrid.innerHTML = '<div style="color:#F9A8D4;text-align:center;padding:10px;font-size:12px;">Detected ' + data.count + ' tiles (display error — tap Calculate to score anyway)</div>';
@@ -1117,6 +1127,10 @@
       var warnHTML = '';
       if (scanWarnings.length > 0) {
         warnHTML = '<div style="color:#FF4785;font-size:11px;margin-top:4px;">' + scanWarnings.map(function(w) { return '&#9888; ' + escHTML(w); }).join('<br>') + '</div>';
+      }
+      // Show auto-correction info
+      if (typeof autoFix !== 'undefined' && autoFix.fixes && autoFix.fixes.length > 0) {
+        warnHTML += '<div style="color:#34D399;font-size:11px;margin-top:4px;">&#10003; Auto-corrected ' + autoFix.fixes.length + ' tile(s): ' + autoFix.fixes.map(function(f) { return escHTML(f); }).join(', ') + '</div>';
       }
 
       // Tile count reasonableness check
@@ -1490,6 +1504,81 @@
     groups._leftover = leftover;
     groups._totalNonFlower = handTiles.length;
     return groups;
+  }
+
+  // ---- SMART AUTO-CORRECTION ----
+  // Tries to fix ungrouped tiles by testing alternative identifications
+  // Targets the most common AI error: confusing suits (bamboo↔circles↔characters)
+  function smartAutoFix(tiles) {
+    if (!tiles || tiles.length === 0) return { tiles: tiles, fixes: [] };
+    var MS = window.MahjongScorer;
+    if (!MS) return { tiles: tiles, fixes: [] };
+
+    var best = tiles.slice();
+    var fixes = [];
+    var maxPasses = 3;
+
+    for (var pass = 0; pass < maxPasses; pass++) {
+      var groups = autoGroupTiles(best);
+      var leftover = groups._leftover || [];
+      if (leftover.length === 0) break; // hand is fully grouped
+
+      var improved = false;
+      // For each ungrouped tile, try swapping its suit
+      for (var li = 0; li < leftover.length; li++) {
+        var origTile = leftover[li];
+        // Find this tile's index in the best array
+        var tileIdx = -1;
+        for (var bi = 0; bi < best.length; bi++) {
+          if (best[bi] === origTile) { tileIdx = bi; break; }
+        }
+        if (tileIdx === -1) continue;
+
+        // Only try suit swaps for suited tiles (not winds/dragons/flowers)
+        if (!origTile.suit) continue;
+
+        var alternatives = [];
+        // Try other suits with same value
+        var suits = ['characters', 'bamboo', 'circles'];
+        suits.forEach(function(s) {
+          if (s !== origTile.suit) alternatives.push({ suit: s, value: origTile.value });
+        });
+        // Try nearby values in same suit (value ± 1, ± 2)
+        for (var dv = -2; dv <= 2; dv++) {
+          if (dv === 0) continue;
+          var nv = origTile.value + dv;
+          if (nv >= 1 && nv <= 9) {
+            alternatives.push({ suit: origTile.suit, value: nv });
+            // Also try other suits with nearby values
+            suits.forEach(function(s) {
+              if (s !== origTile.suit) alternatives.push({ suit: s, value: nv });
+            });
+          }
+        }
+
+        // Test each alternative
+        for (var ai = 0; ai < alternatives.length; ai++) {
+          var testTiles = best.slice();
+          testTiles[tileIdx] = alternatives[ai];
+          var testGroups = autoGroupTiles(testTiles);
+          var testLeftover = testGroups._leftover || [];
+
+          // Accept if fewer ungrouped tiles
+          if (testLeftover.length < leftover.length) {
+            var oldName = origTile.value + '-' + origTile.suit;
+            var newName = alternatives[ai].value + '-' + alternatives[ai].suit;
+            fixes.push(oldName + ' → ' + newName);
+            best = testTiles;
+            improved = true;
+            break;
+          }
+        }
+        if (improved) break; // restart the pass with updated tiles
+      }
+      if (!improved) break; // no more improvements possible
+    }
+
+    return { tiles: best, fixes: fixes };
   }
 
   // ---- SHOW RESULTS ----

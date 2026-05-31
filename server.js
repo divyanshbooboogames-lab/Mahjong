@@ -26,7 +26,7 @@ app.use('/api/scan', rateLimit({
 
 // Serve static files
 app.use(express.static(path.join(__dirname, 'public'), {
-  maxAge: process.env.NODE_ENV === 'production' ? '1d' : 0, etag: true
+  maxAge: process.env.NODE_ENV === 'production' ? '1h' : 0, etag: true
 }));
 
 // ---- OPENAI SETUP ----
