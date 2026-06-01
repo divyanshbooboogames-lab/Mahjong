@@ -67,23 +67,7 @@ function detectDoubles(groups, flowers, options = {}) {
   if (isLastTile) { totalDoubles += 1; reasons.push('1× Mahjong on the last tile'); }
   if (isCleanSweep) { totalDoubles += 1; reasons.push('1× Clean Sweep in the same round'); }
 
-  {
-    const terminalPungs = pungs.filter(g => isTerminal(g.tiles[0]));
-    for (const suit of SUITS) {
-      const suitTermPungs = terminalPungs.filter(g => g.tiles[0].suit === suit);
-      const suitTermPairs = pairs.filter(g => isTerminal(g.tiles[0]) && g.tiles[0].suit === suit);
-      if (suitTermPungs.length >= 1 && suitTermPairs.length >= 1) {
-        totalDoubles += 1;
-        reasons.push('1× Major Hand with Pung and Pair of Terminals in One Suit');
-        break;
-      }
-      if (suitTermPungs.length >= 2) {
-        totalDoubles += 1;
-        reasons.push('1× Pungs of 1s and 9s in One Suit');
-        break;
-      }
-    }
-  }
+  // Terminal pung/pair bonus removed - covered by clean suit rules
 
   // --- 2 DOUBLES ---
   if (ownWind === roundWind) {
@@ -109,9 +93,8 @@ function detectDoubles(groups, flowers, options = {}) {
     if (allSuitedTiles.length > 0 && allHonourTiles.length === 0) {
       const suits = new Set(allSuitedTiles.map(t => t.suit));
       if (suits.size === 1) {
-        const hasTerminals = allSuitedTiles.some(t => t.value === 1) && allSuitedTiles.some(t => t.value === 9);
-        if (hasTerminals) { totalDoubles += 4; reasons.push('4× Clean Suit Hand with Terminals'); }
-        else { totalDoubles += 3; reasons.push('3× One Suit Hand Clean'); }
+        totalDoubles += 3;
+        reasons.push('3× One Suit Hand Clean');
       }
     }
   }
