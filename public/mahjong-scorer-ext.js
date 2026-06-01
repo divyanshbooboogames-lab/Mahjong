@@ -1,5 +1,5 @@
 // ============================================================
-// LETS MAHJONG — Scoring Engine (Part 2: Doubles, Flowers, Analysis)
+// SCOREJONG — Scoring Engine (Part 2: Doubles, Flowers, Analysis)
 // Requires mahjong-scorer-core.js to be loaded first
 // ============================================================
 

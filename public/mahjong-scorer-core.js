@@ -1,6 +1,6 @@
 // ============================================================
-// LETS MAHJONG — Hand Analyzer & Scoring Engine (Part 1: Core)
-// Based on the official Lets Mahjong Guide
+// SCOREJONG — Hand Analyzer & Scoring Engine (Part 1: Core)
+// Based on the official Scorejong Guide
 // ============================================================
 
 // ---- TILE DEFINITIONS ----

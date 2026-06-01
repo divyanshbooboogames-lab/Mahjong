@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Lets Mahjong — Score Calculator</title>
+  <title>Scorejong — Score Calculator</title>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800;900&family=Bungee+Shade&family=Bangers&family=Permanent+Marker&display=swap" rel="stylesheet">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -607,7 +607,7 @@
   <div class="screen active" id="screenSettings">
     <div class="container">
       <div class="logo">
-        <div class="logo-text">LETS MAHJONG</div>
+        <div class="logo-text">SCOREJONG</div>
         <div class="logo-sub">SCORE CALCULATOR</div>
       </div>
 
@@ -840,9 +840,9 @@
   function shareScore() {
     var scoreEl = document.getElementById('scoreNumber');
     var handEl = document.getElementById('handName');
-    var text = 'Lets Mahjong Score: ' + (scoreEl ? scoreEl.textContent : '0') + ' - ' + (handEl ? handEl.textContent : 'Hand');
+    var text = 'Scorejong Score: ' + (scoreEl ? scoreEl.textContent : '0') + ' - ' + (handEl ? handEl.textContent : 'Hand');
     if (navigator.share) {
-      navigator.share({ title: 'Lets Mahjong', text: text }).catch(function(){});
+      navigator.share({ title: 'Scorejong', text: text }).catch(function(){});
     } else if (navigator.clipboard) {
       navigator.clipboard.writeText(text).then(function() { showToast('Score copied!'); });
     } else {

@@ -1,5 +1,5 @@
 // ============================================================
-// LETS MAHJONG — Score Calculator Server
+// SCOREJONG — Score Calculator Server
 // Express + OpenAI Vision API
 // ============================================================
 
@@ -125,7 +125,7 @@ app.get('/health', (req, res) => res.json({ status: 'ok' }));
 // ---- START SERVER ----
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log('\n  Lets Mahjong Score Calculator');
+  console.log('\n  Scorejong Score Calculator');
   console.log('  Running on http://localhost:' + PORT);
   console.log('  Environment: ' + (process.env.NODE_ENV || 'development') + '\n');
 });
