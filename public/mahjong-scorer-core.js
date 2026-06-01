@@ -347,10 +347,10 @@ function calculateGoulashScore(groups, flowers, options = {}) {
   if (flowers) {
     const seatNum = WINDS.indexOf(ownWind) + 1;
     const roundNum = WINDS.indexOf(roundWind) + 1;
-    for (const f of flowers) {
-      if (f.value === seatNum) { doubles += 1; doubleReasons.push('Own Flower'); }
-      if (f.value === roundNum) { doubles += 1; doubleReasons.push('Flower of the Round'); }
-    }
+    var hasOwn = flowers.some(function(f) { return f.value === seatNum; });
+    var hasRound = flowers.some(function(f) { return f.value === roundNum; });
+    if (hasOwn) { doubles += 1; doubleReasons.push('Own Flower'); }
+    if (hasRound) { doubles += 1; doubleReasons.push('Flower of the Round'); }
   }
 
   let finalScore = basePoints;

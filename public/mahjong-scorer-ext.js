@@ -51,17 +51,15 @@ function detectDoubles(groups, flowers, options = {}) {
   if (windPungs.length >= 3) { totalDoubles += 1; reasons.push('1× 3 Pungs of Winds'); }
   if (dragonPungs.length >= 3) { totalDoubles += 1; reasons.push('1× 3 Pungs of Dragons'); }
 
-  if (concealedPungs.length === 3) { totalDoubles += 1; reasons.push('1× 3 Concealed Pungs'); }
+  if (concealedPungs.length === 3 && concealedKongs.length < 3) { totalDoubles += 1; reasons.push('1× 3 Concealed Pungs'); }
 
   const seatNum = WINDS.indexOf(ownWind) + 1;
   const roundNum = WINDS.indexOf(roundWind) + 1;
   if (flowers) {
-    for (const f of flowers) {
-      if (f.value === seatNum) { totalDoubles += 1; reasons.push('1× Own Flower'); }
-    }
-    for (const f of flowers) {
-      if (f.value === roundNum) { totalDoubles += 1; reasons.push('1× Flower of the Round'); }
-    }
+    var hasOwnFlower = flowers.some(function(f) { return f.value === seatNum; });
+    var hasRoundFlower = flowers.some(function(f) { return f.value === roundNum; });
+    if (hasOwnFlower) { totalDoubles += 1; reasons.push('1× Own Flower'); }
+    if (hasRoundFlower) { totalDoubles += 1; reasons.push('1× Flower of the Round'); }
   }
 
   if (isLastTile) { totalDoubles += 1; reasons.push('1× Mahjong on the last tile'); }
@@ -75,7 +73,7 @@ function detectDoubles(groups, flowers, options = {}) {
     if (dblWindPung) { totalDoubles += 2; reasons.push('2× Pung of Double Wind'); }
   }
 
-  if (concealedPungs.length >= 4) { totalDoubles += 2; reasons.push('2× 4 Concealed Pungs'); }
+  if (concealedPungs.length >= 4 && concealedKongs.length < 4) { totalDoubles += 2; reasons.push('2× 4 Concealed Pungs'); }
   if (exposedKongs.length === 3) { totalDoubles += 2; reasons.push('2× 3 Exposed Kongs'); }
 
   // --- 3 DOUBLES ---
