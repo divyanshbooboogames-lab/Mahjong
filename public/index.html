@@ -9,36 +9,36 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
     :root {
       --pink-50: #FFF0F5;
-      --pink-100: #FFE4ED;
-      --pink-200: #FFB8D4;
-      --pink-300: #FF8FB8;
-      --pink-400: #FF6B9D;
-      --pink-500: #FF4785;
-      --purple-200: #DDD6FE;
-      --purple-300: #C4B5FD;
-      --purple-400: #A78BFA;
-      --purple-500: #8B5CF6;
-      --rose-gold: #E8A0BF;
-      --plum: #3D1F3D;
-      --plum-soft: #5C3358;
-      --text: #4A1942;
-      --text-soft: rgba(74,25,66,0.55);
-      --text-muted: rgba(74,25,66,0.35);
-      --glass-bg: rgba(255,255,255,0.65);
-      --glass-border: rgba(255,255,255,0.45);
-      --shadow-sm: 0 2px 8px rgba(74,25,66,0.06);
-      --shadow-md: 0 4px 20px rgba(74,25,66,0.08);
-      --shadow-lg: 0 8px 40px rgba(74,25,66,0.1);
-      --shadow-glow: 0 4px 30px rgba(255,71,133,0.2);
+      --pink-100: #FFD6E8;
+      --pink-200: #FF9ECE;
+      --pink-300: #FF5CAD;
+      --pink-400: #FF1493;
+      --pink-500: #DB0A78;
+      --purple-200: #D8B4FE;
+      --purple-300: #B07AF8;
+      --purple-400: #9333EA;
+      --purple-500: #7C3AED;
+      --rose-gold: #F472B6;
+      --plum: #2D0A2E;
+      --plum-soft: #4C1D4C;
+      --text: #2D0A2E;
+      --text-soft: rgba(45,10,46,0.7);
+      --text-muted: rgba(45,10,46,0.45);
+      --glass-bg: rgba(255,255,255,0.72);
+      --glass-border: rgba(255,20,147,0.15);
+      --shadow-sm: 0 2px 8px rgba(45,10,46,0.08);
+      --shadow-md: 0 4px 24px rgba(45,10,46,0.1);
+      --shadow-lg: 0 8px 40px rgba(45,10,46,0.14);
+      --shadow-glow: 0 4px 30px rgba(255,20,147,0.35);
       --radius-sm: 12px;
       --radius-md: 18px;
       --radius-lg: 24px;
       --radius-pill: 100px;
       /* compat aliases for JS references */
-      --neon-teal: #FF4785;
-      --neon-pink: #8B5CF6;
-      --neon-gold: #E8A0BF;
-      --neon-purple: #A78BFA;
+      --neon-teal: #FF1493;
+      --neon-pink: #9333EA;
+      --neon-gold: #F472B6;
+      --neon-purple: #B07AF8;
       --dark-bg: #FFF0F5;
       --card-bg: var(--glass-bg);
       --card-border: var(--glass-border);
@@ -46,7 +46,8 @@
     }
     body {
       font-family: 'Poppins', sans-serif;
-      background: var(--pink-50);
+      background: linear-gradient(160deg, #FFF0F5 0%, #FFE0EF 40%, #FCD5E8 100%);
+      background-attachment: fixed;
       color: var(--text);
       min-height: 100vh;
       overflow-x: hidden;
@@ -56,9 +57,9 @@
     /* ---- BACKGROUND ---- */
     #bgPattern { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
     .tile-float {
-      position: absolute; bottom: -60px; opacity: var(--o, 0.05);
+      position: absolute; bottom: -60px; opacity: var(--o, 0.07);
       animation: tileRise var(--dur, 22s) linear infinite;
-      font-size: 36px; color: rgba(139,92,246,0.08);
+      font-size: 36px; color: rgba(255,20,147,0.1);
       text-shadow: none; transform: rotate(0deg);
     }
     @keyframes tileRise {
@@ -76,10 +77,10 @@
     body::before {
       content: ''; position: fixed; inset: 0; z-index: -1;
       background:
-        radial-gradient(ellipse at 15% 30%, rgba(255,71,133,0.08) 0%, transparent 55%),
-        radial-gradient(ellipse at 85% 15%, rgba(139,92,246,0.07) 0%, transparent 55%),
-        radial-gradient(ellipse at 50% 85%, rgba(232,160,191,0.06) 0%, transparent 50%),
-        var(--pink-50);
+        radial-gradient(ellipse at 10% 20%, rgba(255,20,147,0.12) 0%, transparent 50%),
+        radial-gradient(ellipse at 90% 10%, rgba(147,51,234,0.1) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 90%, rgba(244,114,182,0.08) 0%, transparent 50%),
+        transparent;
     }
 
     /* ---- LAYOUT ---- */
@@ -100,11 +101,11 @@
     .logo { text-align: center; margin-bottom: 28px; }
     .logo-text {
       font-family: 'Bungee Shade', cursive; font-size: 26px;
-      background: linear-gradient(135deg, var(--pink-400), var(--purple-400), var(--pink-300));
+      background: linear-gradient(135deg, #FF1493, #9333EA, #FF1493);
       background-size: 200% 200%;
       -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-      animation: gradientShift 6s ease infinite;
-      filter: drop-shadow(0 2px 12px rgba(255,71,133,0.15));
+      animation: gradientShift 4s ease infinite;
+      filter: drop-shadow(0 3px 15px rgba(255,20,147,0.3));
     }
     @keyframes gradientShift { 0%,100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
     .logo-sub {
@@ -153,10 +154,10 @@
     }
     .wind-btn:hover { border-color: rgba(139,92,246,0.25); background: rgba(255,255,255,0.7); }
     .wind-btn.active {
-      background: linear-gradient(135deg, rgba(255,71,133,0.12), rgba(139,92,246,0.1));
-      border-color: var(--pink-400); color: var(--pink-500);
-      box-shadow: 0 2px 12px rgba(255,71,133,0.15);
-      transform: translateY(-1px);
+      background: linear-gradient(135deg, rgba(255,20,147,0.15), rgba(147,51,234,0.1));
+      border-color: #FF1493; color: #DB0A78;
+      box-shadow: 0 3px 15px rgba(255,20,147,0.25);
+      transform: translateY(-2px);
     }
 
     .toggle-row { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -170,33 +171,33 @@
     }
     .toggle-chip:hover { border-color: rgba(232,160,191,0.3); }
     .toggle-chip.active {
-      background: linear-gradient(135deg, rgba(232,160,191,0.2), rgba(139,92,246,0.12));
-      border-color: var(--rose-gold); color: var(--plum-soft);
-      box-shadow: 0 2px 12px rgba(232,160,191,0.2);
-      transform: translateY(-1px);
+      background: linear-gradient(135deg, rgba(255,20,147,0.12), rgba(147,51,234,0.08));
+      border-color: #FF1493; color: #DB0A78;
+      box-shadow: 0 3px 15px rgba(255,20,147,0.2);
+      transform: translateY(-2px);
     }
 
     /* ---- BUTTONS ---- */
     .btn-scan {
       width: 100%; padding: 16px; margin-top: 24px; border: none;
       border-radius: var(--radius-md);
-      background: linear-gradient(135deg, var(--pink-400), var(--purple-500));
+      background: linear-gradient(135deg, #FF1493, #9333EA);
       color: #fff; font-family: 'Poppins', sans-serif; font-size: 15px;
       font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
       cursor: pointer; position: relative; overflow: hidden;
       transition: all 0.3s cubic-bezier(0.16,1,0.3,1);
-      box-shadow: var(--shadow-glow);
+      box-shadow: 0 4px 25px rgba(255,20,147,0.4);
     }
-    .btn-scan:hover { transform: translateY(-2px); box-shadow: 0 6px 35px rgba(255,71,133,0.3); }
-    .btn-scan:active { transform: scale(0.97) translateY(0); }
+    .btn-scan:hover { transform: translateY(-3px); box-shadow: 0 8px 35px rgba(255,20,147,0.5); }
+    .btn-scan:active { transform: scale(0.96) translateY(0); }
 
     .btn-pink {
       width: 100%; padding: 14px; border: none; border-radius: var(--radius-md);
-      background: linear-gradient(135deg, var(--purple-400), var(--purple-500));
+      background: linear-gradient(135deg, #9333EA, #7C3AED);
       color: #fff; font-family: 'Poppins', sans-serif; font-size: 14px;
       font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
       cursor: pointer; transition: all 0.3s cubic-bezier(0.16,1,0.3,1);
-      box-shadow: 0 4px 20px rgba(139,92,246,0.25);
+      box-shadow: 0 4px 20px rgba(147,51,234,0.35);
     }
     .btn-pink:hover { transform: translateY(-2px); }
     .btn-pink:active { transform: scale(0.97); }
@@ -403,12 +404,12 @@
     /* ---- RESULTS ---- */
     .score-display { text-align: center; padding: 24px 0 16px; }
     .score-number {
-      font-family: 'Bungee Shade', cursive; font-size: 52px;
-      background: linear-gradient(135deg, var(--pink-400), var(--purple-400), var(--pink-300));
+      font-family: 'Bungee Shade', cursive; font-size: 56px;
+      background: linear-gradient(135deg, #FF1493, #9333EA, #FF1493);
       background-size: 200% 200%;
       -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-      animation: scoreReveal 0.6s cubic-bezier(0.16,1,0.3,1) backwards, gradientShift 4s ease infinite;
-      filter: drop-shadow(0 4px 20px rgba(255,71,133,0.2));
+      animation: scoreReveal 0.6s cubic-bezier(0.16,1,0.3,1) backwards, gradientShift 3s ease infinite;
+      filter: drop-shadow(0 4px 25px rgba(255,20,147,0.35));
     }
     @keyframes scoreReveal { from { transform: scale(0.3) translateY(20px); opacity: 0; } to { transform: scale(1) translateY(0); opacity: 1; } }
     .score-label {
@@ -481,11 +482,11 @@
     @keyframes ripple { to { transform: scale(3); opacity: 0; } }
 
     /* ---- DARK MODE ---- */
-    body.dark-mode { background: #1A0E14; color: #F0E6ED; }
+    body.dark-mode { background: #120810; color: #F5EAF0; }
     body.dark-mode::before {
-      background: radial-gradient(ellipse at 15% 30%, rgba(255,71,133,0.06) 0%, transparent 55%),
-        radial-gradient(ellipse at 85% 15%, rgba(139,92,246,0.06) 0%, transparent 55%),
-        #1A0E14;
+      background: radial-gradient(ellipse at 10% 20%, rgba(255,20,147,0.08) 0%, transparent 50%),
+        radial-gradient(ellipse at 90% 10%, rgba(147,51,234,0.07) 0%, transparent 50%),
+        #120810;
     }
     body.dark-mode .glass {
       background: rgba(40,20,35,0.75); border-color: rgba(255,255,255,0.08);
@@ -583,9 +584,31 @@
 
     @media (max-width: 480px) {
       .logo-text { font-size: 22px; }
-      .score-number { font-size: 40px; }
-      .glass { padding: 22px 18px; }
-      .screen { padding: 20px 12px; }
+      .score-number { font-size: 44px; }
+      .glass { padding: 20px 16px; }
+      .screen { padding: 16px 10px; }
+      .container { max-width: 100%; }
+      .wind-btn { padding: 10px 0; font-size: 12px; }
+      .toggle-chip { padding: 8px 14px; font-size: 12px; }
+      .btn-scan { padding: 14px; font-size: 14px; }
+      .btn-pink { padding: 12px; font-size: 13px; }
+      .btn-outline { padding: 11px; font-size: 12px; }
+      .tile-chip { width: 42px; height: 54px; font-size: 18px; }
+      .picker-btn { width: 42px; height: 50px; font-size: 14px; }
+      .breakdown-row { padding: 9px 10px; }
+      .breakdown-row .label { font-size: 12px; }
+      .breakdown-row .value { font-size: 13px; }
+      .sel { padding: 12px 14px; font-size: 13px; }
+      .tile-edit-bar { gap: 6px; }
+      .tiles-grid { gap: 8px; padding: 12px 0; }
+    }
+    @media (max-width: 360px) {
+      .logo-text { font-size: 19px; }
+      .score-number { font-size: 38px; }
+      .glass { padding: 16px 12px; }
+      .wind-btn { padding: 8px 0; font-size: 11px; }
+      .tile-chip { width: 38px; height: 50px; font-size: 16px; }
+      .toggle-chip { padding: 7px 10px; font-size: 11px; }
     }
   </style>
 </head>
@@ -1085,7 +1108,7 @@
       } catch (parseErr) {
         var errMsg = 'Server error (HTTP ' + response.status + ')';
         var errTip = response.status === 502 ? 'Server is restarting — tap Retake in a few seconds' : 'Unexpected server response — tap Retake to try again';
-        status.innerHTML = '<div class="scan-status" style="color:#FF4785;">&#9888; ' + errMsg + '<br><span style="font-size:11px;opacity:0.6;">' + errTip + '</span></div>';
+        status.innerHTML = '<div class="scan-status" style="color:#FF1493;">&#9888; ' + errMsg + '<br><span style="font-size:11px;opacity:0.6;">' + errTip + '</span></div>';
         buttons.style.display = 'flex';
         document.getElementById('btnCalculate').style.display = 'none';
         sfx('error');
@@ -1097,7 +1120,7 @@
         if (data.error && data.error.includes('API key')) tip = 'Server configuration issue — contact support';
         if (data.error && data.error.includes('rate limit')) tip = 'Wait a moment before scanning again';
         if (data.error && data.error.includes('timed out')) tip = 'Try a clearer photo with fewer tiles';
-        status.innerHTML = '<div class="scan-status" style="color:#FF4785;">&#9888; ' + escHTML(data.error || 'Scan failed') + '<br><span style="font-size:11px;opacity:0.6;">' + escHTML(tip) + '</span></div>';
+        status.innerHTML = '<div class="scan-status" style="color:#FF1493;">&#9888; ' + escHTML(data.error || 'Scan failed') + '<br><span style="font-size:11px;opacity:0.6;">' + escHTML(tip) + '</span></div>';
         buttons.style.display = 'flex';
         document.getElementById('btnCalculate').style.display = 'none';
         sfx('error');
@@ -1126,7 +1149,7 @@
       var scanWarnings = data.warnings && data.warnings.length > 0 ? data.warnings : [];
       var warnHTML = '';
       if (scanWarnings.length > 0) {
-        warnHTML = '<div style="color:#FF4785;font-size:11px;margin-top:4px;">' + scanWarnings.map(function(w) { return '&#9888; ' + escHTML(w); }).join('<br>') + '</div>';
+        warnHTML = '<div style="color:#FF1493;font-size:11px;margin-top:4px;">' + scanWarnings.map(function(w) { return '&#9888; ' + escHTML(w); }).join('<br>') + '</div>';
       }
       // Show auto-correction info
       if (typeof autoFix !== 'undefined' && autoFix.fixes && autoFix.fixes.length > 0) {
@@ -1141,7 +1164,7 @@
         countColor = '#FFB8D0';
         countNote = ' (fewer than 13 — may be incomplete)';
       } else if (nonFlowerCount > 14) {
-        countColor = '#FF4785';
+        countColor = '#FF1493';
         countNote = ' (more than 14 — AI may have hallucinated extra tiles)';
       }
 
@@ -1156,7 +1179,7 @@
       var errMsg = 'Scan failed';
       var errTip = 'Check your internet connection and try again';
       if (err.name === 'AbortError') { errMsg = 'Request timed out'; errTip = 'Server may be busy — tap Retake to try again'; }
-      status.innerHTML = '<div class="scan-status" style="color:#FF4785;">&#9888; ' + errMsg + '<br><span style="font-size:11px;opacity:0.6;">' + errTip + '</span></div>';
+      status.innerHTML = '<div class="scan-status" style="color:#FF1493;">&#9888; ' + errMsg + '<br><span style="font-size:11px;opacity:0.6;">' + errTip + '</span></div>';
       buttons.style.display = 'flex';
       document.getElementById('btnCalculate').style.display = 'none';
       sfx('error');
@@ -1165,11 +1188,11 @@
 
   function tileChipHTML(t, faceDown, tileIndex) {
     var sym = '', label = '', col = '#E0E0E0';
-    if (t.suit === 'characters') { sym = CHAR_MAP.characters[t.value] || '?'; label = t.value + ' Char'; col = '#FF4785'; }
+    if (t.suit === 'characters') { sym = CHAR_MAP.characters[t.value] || '?'; label = t.value + ' Char'; col = '#FF1493'; }
     else if (t.suit === 'bamboo') { sym = t.value; label = t.value + ' Bam'; col = '#34D399'; }
     else if (t.suit === 'circles') { sym = t.value; label = t.value + ' Dot'; col = '#93C5FD'; }
     else if (t.type === 'wind') { sym = CHAR_MAP.winds[t.value] || '?'; label = (t.value || '?').charAt(0).toUpperCase() + ' Wind'; col = '#C4B5FD'; }
-    else if (t.type === 'dragon') { sym = CHAR_MAP.dragons[t.value] || '?'; label = (t.value || '?').charAt(0).toUpperCase() + ' Drg'; col = t.value === 'green' ? '#34D399' : t.value === 'white' ? '#C4B5FD' : '#FF4785'; }
+    else if (t.type === 'dragon') { sym = CHAR_MAP.dragons[t.value] || '?'; label = (t.value || '?').charAt(0).toUpperCase() + ' Drg'; col = t.value === 'green' ? '#34D399' : t.value === 'white' ? '#C4B5FD' : '#FF1493'; }
     else if (t.type === 'flower') { sym = '\u{1F338}'; label = 'Flower'; col = '#DDB4F0'; }
     // Escape all dynamic values to prevent XSS from AI response data
     sym = escHTML(sym);
@@ -1265,7 +1288,7 @@
       var leftoverLabel = document.createElement('div');
       leftoverLabel.className = 'tile-group-label';
       leftoverLabel.style.background = 'rgba(255,143,163,0.2)';
-      leftoverLabel.style.color = '#FF4785';
+      leftoverLabel.style.color = '#FF1493';
       leftoverLabel.textContent = 'UNGROUPED';
       leftoverGroup.appendChild(leftoverRow);
       leftoverGroup.appendChild(leftoverLabel);
@@ -1337,7 +1360,7 @@
       var leftoverLabel = document.createElement('div');
       leftoverLabel.className = 'tile-group-label';
       leftoverLabel.style.background = 'rgba(255,143,163,0.2)';
-      leftoverLabel.style.color = '#FF4785';
+      leftoverLabel.style.color = '#FF1493';
       leftoverLabel.textContent = 'UNGROUPED';
       leftoverGroup.appendChild(leftoverRow);
       leftoverGroup.appendChild(leftoverLabel);
@@ -1603,7 +1626,7 @@
     document.getElementById('handName').textContent = handName;
     // Color the hand name red if incomplete
     var hnEl = document.getElementById('handName');
-    hnEl.style.color = validation.isComplete ? 'var(--neon-teal)' : '#FF4785';
+    hnEl.style.color = validation.isComplete ? 'var(--neon-teal)' : '#FF1493';
 
     // Save to history
     saveToHistory(handName, score, result.scoring.limitName, result.scoring.doubles, validation.totalTileCount || 0);
@@ -1716,8 +1739,8 @@
       row.className = 'breakdown-row';
       row.style.animationDelay = (0.2 + i * 0.08) + 's';
       var valClass = r.warn ? 'value' : ('value' + (r.gold ? ' gold' : ''));
-      var valStyle = r.warn ? ' style="color:#FF4785;"' : '';
-      var labelStyle = r.warn ? ' style="color:#FF4785;font-size:12px;"' : '';
+      var valStyle = r.warn ? ' style="color:#FF1493;"' : '';
+      var labelStyle = r.warn ? ' style="color:#FF1493;font-size:12px;"' : '';
       row.innerHTML = '<span class="label"' + labelStyle + '>' + escHTML(r.label) + '</span><span class="' + valClass + '"' + valStyle + '>' + escHTML(r.value) + '</span>';
       bd.appendChild(row);
     });
@@ -1749,7 +1772,7 @@
     canvas.height = window.innerHeight;
     var ctx = canvas.getContext('2d');
     var particles = [];
-    var colors = ['#FF4785','#8B5CF6','#F9A8D4','#A78BFA','#E8A0BF','#C4B5FD'];
+    var colors = ['#FF1493','#8B5CF6','#F9A8D4','#A78BFA','#E8A0BF','#C4B5FD'];
     for (var i = 0; i < 100; i++) {
       var angle = (Math.PI * 2 * i) / 100 + (Math.random() - 0.5) * 0.3;
       var speed = 3 + Math.random() * 7;
@@ -1990,7 +2013,7 @@
       countColor = '#FFB8D0';
       countNote = ' (fewer than 13 — may be incomplete)';
     } else if (nonFlowerCount > 14) {
-      countColor = '#FF4785';
+      countColor = '#FF1493';
       countNote = ' (more than 14 — remove extra tiles)';
     }
     status.innerHTML = '<div class="scan-status" style="color:' + countColor + ';">&#9989; ' + total + ' tiles' + escHTML(countNote) + '</div>';
@@ -2005,9 +2028,9 @@
     var txt = nonFlower + ' tile' + (nonFlower !== 1 ? 's' : '');
     if (flowers > 0) txt += ' + ' + flowers + ' flower' + (flowers !== 1 ? 's' : '');
     var col = 'rgba(74,25,66,0.45)';
-    if (nonFlower === 14 || nonFlower === 13) col = '#FF4785';
+    if (nonFlower === 14 || nonFlower === 13) col = '#FF1493';
     else if (nonFlower < 13) col = '#E8A0BF';
-    else if (nonFlower > 14) col = '#FF4785';
+    else if (nonFlower > 14) col = '#FF1493';
     badge.style.color = col;
     badge.style.borderColor = col;
     badge.textContent = txt;
@@ -2035,7 +2058,7 @@
     // Characters 1-9
     var html = '';
     for (var i = 1; i <= 9; i++) {
-      html += '<button class="picker-btn" onclick="addTileFromPicker({suit:\'characters\',value:' + i + '})" style="color:#FF4785;">' + (chars[i] || i) + '<span>' + i + ' Char</span></button>';
+      html += '<button class="picker-btn" onclick="addTileFromPicker({suit:\'characters\',value:' + i + '})" style="color:#FF1493;">' + (chars[i] || i) + '<span>' + i + ' Char</span></button>';
     }
     document.getElementById('pickerChars').innerHTML = html;
 
@@ -2066,7 +2089,7 @@
     // Dragons
     html = '';
     var dragons = ['red','green','white'];
-    var drgCols = ['#FF4785','#34D399','#C4B5FD'];
+    var drgCols = ['#FF1493','#34D399','#C4B5FD'];
     dragons.forEach(function(d, di) {
       html += '<button class="picker-btn" onclick="addTileFromPicker({type:\'dragon\',value:\'' + d + '\'})" style="color:' + drgCols[di] + ';">' + (dragonChars[d] || d.charAt(0).toUpperCase()) + '<span>' + d.charAt(0).toUpperCase() + ' Drg</span></button>';
     });
