@@ -7,113 +7,134 @@
 // DOUBLES DETECTION (from the Doubles page)
 // ============================================================
 
-function detectDoubles(groups, flowers, options = {}) {
+function detectDoubles(groups, flowers, options) {
+  if (!options) options = {};
   groups = safeGroups(groups);
-  const { ownWind = 'east', roundWind = 'west', isMahjong = false,
-          isLastTile = false, isCleanSweep = false, isConcealed = false,
-          isDrawnStanding = false } = options;
+  var ownWind = options.ownWind || 'east';
+  var roundWind = options.roundWind || 'west';
+  var isMahjong = options.isMahjong || false;
+  var isLastTile = options.isLastTile || false;
+  var isCleanSweep = options.isCleanSweep || false;
+  var isConcealed = options.isConcealed || false;
+  var isDrawnStanding = options.isDrawnStanding || false;
 
-  let totalDoubles = 0;
-  const reasons = [];
+  var totalDoubles = 0;
+  var reasons = [];
 
-  const pungs = groups.filter(g => g.type === 'pung' || g.type === 'kong');
-  const kongs = groups.filter(g => g.type === 'kong');
-  const concealedPungs = pungs.filter(g => !g.exposed);
-  const concealedKongs = kongs.filter(g => !g.exposed);
-  const exposedKongs = kongs.filter(g => g.exposed);
-  const pairs = groups.filter(g => g.type === 'pair');
+  var pungs = groups.filter(function(g) { return g.type === 'pung' || g.type === 'kong'; });
+  var kongs = groups.filter(function(g) { return g.type === 'kong'; });
+  var concealedPungs = pungs.filter(function(g) { return !g.exposed; });
+  var concealedKongs = kongs.filter(function(g) { return !g.exposed; });
+  var pairs = groups.filter(function(g) { return g.type === 'pair'; });
+  var allTiles = safeFlatTiles(groups);
 
-  // --- 1 DOUBLE items ---
-  for (const g of pungs) {
+  // === HAND COMPOSITION DOUBLES ===
+
+  // All Honours: 3 doubles (all tiles are winds/dragons)
+  if (allTiles.length > 0 && allTiles.every(function(t) { return isHonour(t); })) {
+    totalDoubles += 3; reasons.push('3x All Honours');
+  }
+
+  // One Suit Clean: 3 doubles (all tiles one suit, no honours)
+  var allSuited = allTiles.filter(function(t) { return isSuited(t); });
+  var allHonours = allTiles.filter(function(t) { return isHonour(t); });
+  if (allSuited.length > 0 && allHonours.length === 0) {
+    var suitSet = {};
+    allSuited.forEach(function(t) { suitSet[t.suit] = true; });
+    if (Object.keys(suitSet).length === 1) {
+      totalDoubles += 3; reasons.push('3x One Suit Clean');
+    }
+  }
+
+  // All Majors: 1 double (all tiles are terminals 1/9 + honours)
+  if (allTiles.length > 0 && allTiles.every(function(t) { return isMajor(t); })) {
+    totalDoubles += 1; reasons.push('1x All Majors');
+  }
+
+  // Pungs/Kongs of 1&9: 1 double (all pungs/kongs are terminal values)
+  if (pungs.length > 0 && pungs.every(function(g) { return isTerminal(g.tiles[0]); })) {
+    totalDoubles += 1; reasons.push('1x Pungs/Kongs of 1 and 9');
+  }
+
+  // === INDIVIDUAL MELD DOUBLES ===
+
+  // Pung of Dragon: 1 each
+  pungs.forEach(function(g) {
     if (g.tiles[0].type === 'dragon') {
-      totalDoubles += 1;
-      reasons.push(`1× Pung of ${tileName(g.tiles[0])}`);
+      totalDoubles += 1; reasons.push('1x Pung of ' + tileName(g.tiles[0]));
     }
-  }
+  });
 
-  if (ownWind !== roundWind) {
-    for (const g of pungs) {
-      if (g.tiles[0].type === 'wind' && g.tiles[0].value === ownWind) {
-        totalDoubles += 1;
-        reasons.push('1× Pung of Own Wind');
-      }
-    }
-    for (const g of pungs) {
-      if (g.tiles[0].type === 'wind' && g.tiles[0].value === roundWind) {
-        totalDoubles += 1;
-        reasons.push('1× Pung of Round Wind');
-      }
-    }
-  }
+  // Pung of Own Wind / Round Wind: 1 each (or 2 for double wind)
+  var windPungs = pungs.filter(function(g) { return g.tiles[0].type === 'wind'; });
+  var dragonPungs = pungs.filter(function(g) { return g.tiles[0].type === 'dragon'; });
 
-  const windPungs = pungs.filter(g => g.tiles[0].type === 'wind');
-  const dragonPungs = pungs.filter(g => g.tiles[0].type === 'dragon');
-  if (windPungs.length >= 3) { totalDoubles += 1; reasons.push('1× 3 Pungs of Winds'); }
-  if (dragonPungs.length >= 3) { totalDoubles += 1; reasons.push('1× 3 Pungs of Dragons'); }
-
-  if (concealedPungs.length === 3 && concealedKongs.length < 3) { totalDoubles += 1; reasons.push('1× 3 Concealed Pungs'); }
-
-  const seatNum = WINDS.indexOf(ownWind) + 1;
-  const roundNum = WINDS.indexOf(roundWind) + 1;
-  if (flowers) {
-    var hasOwnFlower = flowers.some(function(f) { return f.value === seatNum; });
-    var hasRoundFlower = flowers.some(function(f) { return f.value === roundNum; });
-    if (hasOwnFlower) { totalDoubles += 1; reasons.push('1× Own Flower'); }
-    if (hasRoundFlower) { totalDoubles += 1; reasons.push('1× Flower of the Round'); }
-  }
-
-  if (isLastTile) { totalDoubles += 1; reasons.push('1× Mahjong on the last tile'); }
-  if (isCleanSweep) { totalDoubles += 1; reasons.push('1× Clean Sweep in the same round'); }
-
-  // Terminal pung/pair bonus removed - covered by clean suit rules
-
-  // --- 2 DOUBLES ---
   if (ownWind === roundWind) {
-    const dblWindPung = pungs.find(g => g.tiles[0].type === 'wind' && g.tiles[0].value === ownWind);
-    if (dblWindPung) { totalDoubles += 2; reasons.push('2× Pung of Double Wind'); }
-  }
-
-  if (concealedPungs.length >= 4 && concealedKongs.length < 4) { totalDoubles += 2; reasons.push('2× 4 Concealed Pungs'); }
-  if (exposedKongs.length === 3) { totalDoubles += 2; reasons.push('2× 3 Exposed Kongs'); }
-
-  // --- 3 DOUBLES ---
-  {
-    const allTiles = safeFlatTiles(groups);
-    if (allTiles.length > 0 && allTiles.every(t => isHonour(t))) {
-      totalDoubles += 3;
-      reasons.push('3× All Honour Hand');
-    }
-  }
-
-  {
-    const allSuitedTiles = safeFlatTiles(groups).filter(t => isSuited(t));
-    const allHonourTiles = safeFlatTiles(groups).filter(t => isHonour(t));
-    if (allSuitedTiles.length > 0 && allHonourTiles.length === 0) {
-      const suits = new Set(allSuitedTiles.map(t => t.suit));
-      if (suits.size === 1) {
-        totalDoubles += 3;
-        reasons.push('3× One Suit Hand Clean');
+    // Double wind: 2 doubles for pung of own=round wind
+    pungs.forEach(function(g) {
+      if (g.tiles[0].type === 'wind' && g.tiles[0].value === ownWind) {
+        totalDoubles += 2; reasons.push('2x Pung of Double Wind');
       }
+    });
+  } else {
+    pungs.forEach(function(g) {
+      if (g.tiles[0].type === 'wind' && g.tiles[0].value === ownWind) {
+        totalDoubles += 1; reasons.push('1x Pung of Own Wind');
+      }
+    });
+    pungs.forEach(function(g) {
+      if (g.tiles[0].type === 'wind' && g.tiles[0].value === roundWind) {
+        totalDoubles += 1; reasons.push('1x Pung of Round Wind');
+      }
+    });
+  }
+
+  // 3 Pungs/Kongs of Dragons: 1
+  if (dragonPungs.length >= 3) { totalDoubles += 1; reasons.push('1x 3 Pungs/Kongs of Dragons'); }
+
+  // 3 Pungs/Kongs of Winds: 1
+  if (windPungs.length >= 3) { totalDoubles += 1; reasons.push('1x 3 Pungs/Kongs of Winds'); }
+
+  // 4 Pungs/Kongs of Winds: 2 (replaces the 3-wind bonus)
+  if (windPungs.length >= 4) { totalDoubles += 2; reasons.push('2x 4 Pungs/Kongs of Winds'); }
+
+  // === CONCEALMENT & KONG BONUSES (highest applicable only) ===
+  var meldBonus = 0;
+  var meldReason = '';
+  if (concealedKongs.length >= 4) { meldBonus = 4; meldReason = '4x Four Hidden Kongs'; }
+  else if (kongs.length >= 4) { meldBonus = 3; meldReason = '3x Four Kongs'; }
+  else if (concealedKongs.length >= 3) { meldBonus = 3; meldReason = '3x Three Hidden Kongs'; }
+  else if (concealedPungs.length >= 4) { meldBonus = 2; meldReason = '2x Four Hidden Pungs'; }
+  else if (kongs.length >= 3) { meldBonus = 2; meldReason = '2x Three Kongs'; }
+  else if (concealedPungs.length >= 3) { meldBonus = 1; meldReason = '1x Three Hidden Pungs'; }
+  if (meldBonus > 0) { totalDoubles += meldBonus; reasons.push(meldReason); }
+
+  // === FLOWER DOUBLES ===
+  var seatNum = WINDS.indexOf(ownWind) + 1;
+  var roundNum = WINDS.indexOf(roundWind) + 1;
+  if (flowers && flowers.length > 0) {
+    // Own Flower/Season: 1
+    if (flowers.some(function(f) { return f.value === seatNum; })) {
+      totalDoubles += 1; reasons.push('1x Own Flower');
     }
+    // Number of the Round: 1
+    if (flowers.some(function(f) { return f.value === roundNum; })) {
+      totalDoubles += 1; reasons.push('1x Flower of the Round');
+    }
+    // Bouquet: 3 (complete set of 4 seasons or 4 gentlemen)
+    var set1 = flowers.filter(function(f) { return f.set === 1; });
+    var set2 = flowers.filter(function(f) { return f.set === 2; });
+    if (set1.length === 4) { totalDoubles += 3; reasons.push('3x Season Bouquet'); }
+    if (set2.length === 4) { totalDoubles += 3; reasons.push('3x Gentleman Bouquet'); }
   }
 
-  if (isConcealed && isMahjong) { totalDoubles += 3; reasons.push('3× Concealed Mahjong'); }
-  if (concealedKongs.length === 3) { totalDoubles += 3; reasons.push('3× 3 Concealed Kongs'); }
-  if (exposedKongs.length >= 4) { totalDoubles += 3; reasons.push('3× 4 Exposed Kongs'); }
+  // === SPECIAL DOUBLES ===
+  if (isLastTile) { totalDoubles += 1; reasons.push('1x Mahjong on Last Tile'); }
+  if (isCleanSweep) { totalDoubles += 1; reasons.push('1x Clean Sweep'); }
+  if (isConcealed && isMahjong) { totalDoubles += 3; reasons.push('3x Concealed Mahjong'); }
+  if (isDrawnStanding) { totalDoubles += 5; reasons.push('5x Drawn Standing Hand'); }
 
-  // --- 4 DOUBLES ---
-  if (concealedKongs.length >= 4) { totalDoubles += 4; reasons.push('4× 4 Concealed Kongs'); }
-
-  // --- 5 DOUBLES ---
-  if (isDrawnStanding) { totalDoubles += 5; reasons.push('5× Drawn Standing Hand'); }
-
-  // --- 7 DOUBLES ---
-  if (windPungs.length >= 4 && pairs.length >= 1 && pairs[0].tiles[0].type === 'dragon') {
-    totalDoubles += 7;
-    reasons.push('7× 4 Pungs of Winds + Pair of Dragons');
-  }
-
-  return { totalDoubles, reasons };
+  return { totalDoubles: totalDoubles, reasons: reasons };
 }
 
 // ============================================================
@@ -129,20 +150,7 @@ function lookupScoringCard(basePoints, doubles) {
 // ============================================================
 
 function applyLimits(score, isEast) {
-  const limits = {
-    halfLimit: isEast ? 1000 : 500,
-    limit: isEast ? 2000 : 1000,
-    doubleLimit: isEast ? 4000 : 2000,
-    superLimit: isEast ? 8000 : 4000
-  };
-
-  let limitName = null;
-  if (score >= limits.superLimit) { score = limits.superLimit; limitName = 'Super Limit'; }
-  else if (score >= limits.doubleLimit) { score = limits.doubleLimit; limitName = 'Double Limit'; }
-  else if (score >= limits.limit) { score = limits.limit; limitName = 'Limit'; }
-  else if (score >= limits.halfLimit) { score = limits.halfLimit; limitName = 'Half Limit'; }
-
-  return { score, limitName, limits };
+  return { score: score, limitName: null, limits: {} };
 }
 
 // ============================================================
