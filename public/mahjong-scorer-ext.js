@@ -295,43 +295,26 @@ function analyzeHand(groups, flowers, options) {
   var baseDoubleReasons = doublesResult.reasons.concat(handDoubleReasons);
 
   var flowerScore = scoreFlowers(flowers, ownWind, roundWind);
-  var flowerDoublesResult = detectFlowerDoubles(flowers, ownWind, roundWind);
 
-  // Path A: Flowers as POINTS
-  var scoreA = goulashScore.basePoints;
-  scoreA = lookupScoringCard(scoreA, baseDoublesTotal);
-  if (isEast) scoreA *= 2;
-  scoreA += flowerScore.points;
-  var limitA = applyLimits(scoreA, isEast);
+  // Score: base x 2^doubles, then East x2, then add flower points
+  // Flowers always give BOTH doubles (in detectDoubles) AND points (bouquet/pair) - no either/or
+  var rawScore = lookupScoringCard(goulashScore.basePoints, baseDoublesTotal);
+  if (isEast) rawScore *= 2;
+  rawScore += flowerScore.points;
+  var limited = applyLimits(rawScore, isEast);
 
-  // Path B: Flowers as DOUBLES
-  var scoreB = goulashScore.basePoints;
-  var totalDoublesB = baseDoublesTotal + flowerDoublesResult.totalDoubles;
-  scoreB = lookupScoringCard(scoreB, totalDoublesB);
-  if (isEast) scoreB *= 2;
-  var limitB = applyLimits(scoreB, isEast);
+  var finalScore = limited.score;
+  var finalLimitName = limited.limitName;
+  var finalLimits = limited.limits;
+  var finalDoubles = baseDoublesTotal;
+  var finalDoubleReasons = baseDoubleReasons;
+  var finalFlowerPoints = flowerScore.points;
+  var finalFlowerDetails = flowerScore.details;
 
-  var useFlowerDoubles = limitB.score > limitA.score && flowerDoublesResult.totalDoubles > 0;
-  var finalScore = useFlowerDoubles ? limitB.score : limitA.score;
-  var finalLimitName = useFlowerDoubles ? limitB.limitName : limitA.limitName;
-  var finalLimits = useFlowerDoubles ? limitB.limits : limitA.limits;
-  var finalDoubles = useFlowerDoubles
-    ? baseDoublesTotal + flowerDoublesResult.totalDoubles
-    : baseDoublesTotal;
-  var finalDoubleReasons = useFlowerDoubles
-    ? baseDoubleReasons.concat(flowerDoublesResult.reasons)
-    : baseDoubleReasons;
-  var finalFlowerPoints = useFlowerDoubles ? 0 : flowerScore.points;
-  var finalFlowerDetails = useFlowerDoubles
-    ? ['Flowers used as doubles (higher score)']
-    : flowerScore.details;
-
-  var preEastScore = useFlowerDoubles ? limitB.score : limitA.score;
+  var preEastScore = finalScore;
   if (isEast) {
-    var scoreBeforeEast = useFlowerDoubles
-      ? lookupScoringCard(goulashScore.basePoints, totalDoublesB)
-      : lookupScoringCard(goulashScore.basePoints, baseDoublesTotal) + flowerScore.points;
-    preEastScore = scoreBeforeEast;
+    // Show score before East doubling (without flower points - they're added after East)
+    preEastScore = lookupScoringCard(goulashScore.basePoints, baseDoublesTotal);
   }
 
   var activeWindBonuses = [];
@@ -367,7 +350,7 @@ function analyzeHand(groups, flowers, options) {
       limits: finalLimits,
       isEast: isEast,
       preEastScore: isEast ? preEastScore : null,
-      flowerMode: useFlowerDoubles ? 'doubles' : 'points',
+      flowerMode: 'points',
       activeWindBonuses: activeWindBonuses
     },
     flowers: flowers

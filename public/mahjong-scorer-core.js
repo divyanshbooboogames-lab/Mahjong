@@ -340,8 +340,14 @@ function calculateGoulashScore(groups, flowers, options = {}) {
     if (g.type !== 'pung' && g.type !== 'kong') continue;
     const tile = g.tiles[0];
     if (tile.type === 'dragon') { doubles += 1; doubleReasons.push(`Pung of ${tileName(tile)}`); }
-    if (tile.type === 'wind' && tile.value === ownWind) { doubles += 1; doubleReasons.push(`Pung of Own Wind (${tileName(tile)})`); }
-    if (tile.type === 'wind' && tile.value === roundWind) { doubles += 1; doubleReasons.push(`Pung of Round Wind (${tileName(tile)})`); }
+    if (tile.type === 'wind') {
+      if (ownWind === roundWind && tile.value === ownWind) {
+        doubles += 2; doubleReasons.push('Pung of Double Wind');
+      } else {
+        if (tile.value === ownWind) { doubles += 1; doubleReasons.push('Pung of Own Wind'); }
+        if (tile.value === roundWind) { doubles += 1; doubleReasons.push('Pung of Round Wind'); }
+      }
+    }
   }
 
   if (flowers) {
