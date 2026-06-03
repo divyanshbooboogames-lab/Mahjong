@@ -12,10 +12,8 @@ function detectDoubles(groups, flowers, options) {
   groups = safeGroups(groups);
   var ownWind = options.ownWind || 'east';
   var roundWind = options.roundWind || 'west';
-  var isMahjong = options.isMahjong || false;
   var isLastTile = options.isLastTile || false;
   var isCleanSweep = options.isCleanSweep || false;
-  var isConcealed = options.isConcealed || false;
   var isDrawnStanding = options.isDrawnStanding || false;
 
   var totalDoubles = 0;
@@ -25,52 +23,77 @@ function detectDoubles(groups, flowers, options) {
   var kongs = groups.filter(function(g) { return g.type === 'kong'; });
   var concealedPungs = pungs.filter(function(g) { return !g.exposed; });
   var concealedKongs = kongs.filter(function(g) { return !g.exposed; });
-  var pairs = groups.filter(function(g) { return g.type === 'pair'; });
   var allTiles = safeFlatTiles(groups);
 
-  // === HAND COMPOSITION DOUBLES ===
+  // Track which categories fired to prevent double-counting
+  var isAllHonours = false;
+  var isOneSuitClean = false;
+
+  // === HAND COMPOSITION DOUBLES (mutually exclusive where noted) ===
 
   // All Honours: 3 doubles (all tiles are winds/dragons)
+  // FIX #2: All Honours does NOT also give All Majors
   if (allTiles.length > 0 && allTiles.every(function(t) { return isHonour(t); })) {
     totalDoubles += 3; reasons.push('3x All Honours');
+    isAllHonours = true;
   }
 
   // One Suit Clean: 3 doubles (all tiles one suit, no honours)
+  // FIX #6: This is the FINAL bonus - no additional clean/suit doubles on top
   var allSuited = allTiles.filter(function(t) { return isSuited(t); });
-  var allHonours = allTiles.filter(function(t) { return isHonour(t); });
-  if (allSuited.length > 0 && allHonours.length === 0) {
+  var allHonourTiles = allTiles.filter(function(t) { return isHonour(t); });
+  if (allSuited.length > 0 && allHonourTiles.length === 0) {
     var suitSet = {};
     allSuited.forEach(function(t) { suitSet[t.suit] = true; });
     if (Object.keys(suitSet).length === 1) {
       totalDoubles += 3; reasons.push('3x One Suit Clean');
+      isOneSuitClean = true;
     }
   }
 
   // All Majors: 1 double (all tiles are terminals 1/9 + honours)
-  if (allTiles.length > 0 && allTiles.every(function(t) { return isMajor(t); })) {
+  // FIX #2: Only if NOT already All Honours (no stacking)
+  if (!isAllHonours && allTiles.length > 0 && allTiles.every(function(t) { return isMajor(t); })) {
     totalDoubles += 1; reasons.push('1x All Majors');
   }
 
-  // Pungs/Kongs of 1&9: 1 double (all pungs/kongs are terminal values)
-  if (pungs.length > 0 && pungs.every(function(g) { return isTerminal(g.tiles[0]); })) {
-    totalDoubles += 1; reasons.push('1x Pungs/Kongs of 1 and 9');
+  // FIX #3: Pungs/Kongs of 1&9 in ONE SUIT: 1 double
+  // Requires a pung/kong of value 1 AND a pung/kong of value 9 in the SAME suit
+  // A pair does NOT qualify
+  if (!isAllHonours) {
+    var termPungs = pungs.filter(function(g) { return isTerminal(g.tiles[0]); });
+    for (var si = 0; si < SUITS.length; si++) {
+      var suit = SUITS[si];
+      var has1 = termPungs.some(function(g) { return g.tiles[0].suit === suit && g.tiles[0].value === 1; });
+      var has9 = termPungs.some(function(g) { return g.tiles[0].suit === suit && g.tiles[0].value === 9; });
+      if (has1 && has9) {
+        totalDoubles += 1; reasons.push('1x Pungs/Kongs of 1 and 9 in ' + SUIT_LABELS[suit]);
+        break;
+      }
+    }
   }
 
   // === INDIVIDUAL MELD DOUBLES ===
 
-  // Pung of Dragon: 1 each
-  pungs.forEach(function(g) {
-    if (g.tiles[0].type === 'dragon') {
-      totalDoubles += 1; reasons.push('1x Pung of ' + tileName(g.tiles[0]));
-    }
-  });
-
-  // Pung of Own Wind / Round Wind: 1 each (or 2 for double wind)
+  // FIX #4: Dragon Pungs = 1 double TOTAL (not per pung)
+  // Any number of dragon pungs = 1 double. 3 dragon pungs = 1 (dragon) + 1 (3 dragons) = 2
   var windPungs = pungs.filter(function(g) { return g.tiles[0].type === 'wind'; });
   var dragonPungs = pungs.filter(function(g) { return g.tiles[0].type === 'dragon'; });
 
+  if (dragonPungs.length > 0) {
+    totalDoubles += 1;
+    if (dragonPungs.length === 1) {
+      reasons.push('1x Pung of ' + tileName(dragonPungs[0].tiles[0]));
+    } else {
+      reasons.push('1x Dragon Pung (' + dragonPungs.length + ' dragons)');
+    }
+  }
+
+  // 3 Pungs/Kongs of Dragons: +1 additional (on top of the 1 dragon double above)
+  if (dragonPungs.length >= 3) { totalDoubles += 1; reasons.push('1x 3 Pungs/Kongs of Dragons'); }
+
+  // Pung of Own Wind / Round Wind
   if (ownWind === roundWind) {
-    // Double wind: 2 doubles for pung of own=round wind
     pungs.forEach(function(g) {
       if (g.tiles[0].type === 'wind' && g.tiles[0].value === ownWind) {
         totalDoubles += 2; reasons.push('2x Pung of Double Wind');
@@ -89,16 +112,14 @@ function detectDoubles(groups, flowers, options) {
     });
   }
 
-  // 3 Pungs/Kongs of Dragons: 1
-  if (dragonPungs.length >= 3) { totalDoubles += 1; reasons.push('1x 3 Pungs/Kongs of Dragons'); }
-
   // 3 Pungs/Kongs of Winds: 1
   if (windPungs.length >= 3) { totalDoubles += 1; reasons.push('1x 3 Pungs/Kongs of Winds'); }
 
-  // 4 Pungs/Kongs of Winds: 2 (replaces the 3-wind bonus)
+  // 4 Pungs/Kongs of Winds: 2
   if (windPungs.length >= 4) { totalDoubles += 2; reasons.push('2x 4 Pungs/Kongs of Winds'); }
 
   // === CONCEALMENT & KONG BONUSES (highest applicable only) ===
+  // FIX #7: No stacking - pick single highest
   var meldBonus = 0;
   var meldReason = '';
   if (concealedKongs.length >= 4) { meldBonus = 4; meldReason = '4x Four Hidden Kongs'; }
@@ -109,29 +130,29 @@ function detectDoubles(groups, flowers, options) {
   else if (concealedPungs.length >= 3) { meldBonus = 1; meldReason = '1x Three Hidden Pungs'; }
   if (meldBonus > 0) { totalDoubles += meldBonus; reasons.push(meldReason); }
 
-  // === FLOWER DOUBLES ===
+  // === FIX #5: FLOWER DOUBLES (8 bonus tiles: Flowers 1-4, Seasons 1-4) ===
   var seatNum = WINDS.indexOf(ownWind) + 1;
   var roundNum = WINDS.indexOf(roundWind) + 1;
   if (flowers && flowers.length > 0) {
-    // Own Flower/Season: 1
+    // Own Flower/Season: 1 (any flower/season matching seat number)
     if (flowers.some(function(f) { return f.value === seatNum; })) {
-      totalDoubles += 1; reasons.push('1x Own Flower');
+      totalDoubles += 1; reasons.push('1x Own Flower/Season');
     }
-    // Number of the Round: 1
+    // Number of the Round: 1 (any flower/season matching round number)
     if (flowers.some(function(f) { return f.value === roundNum; })) {
       totalDoubles += 1; reasons.push('1x Flower of the Round');
     }
-    // Bouquet: 3 (complete set of 4 seasons or 4 gentlemen)
+    // Bouquet: 3 (all 4 of one set)
     var set1 = flowers.filter(function(f) { return f.set === 1; });
     var set2 = flowers.filter(function(f) { return f.set === 2; });
-    if (set1.length === 4) { totalDoubles += 3; reasons.push('3x Season Bouquet'); }
-    if (set2.length === 4) { totalDoubles += 3; reasons.push('3x Gentleman Bouquet'); }
+    if (set1.length === 4) { totalDoubles += 3; reasons.push('3x Flower Bouquet'); }
+    if (set2.length === 4) { totalDoubles += 3; reasons.push('3x Season Bouquet'); }
   }
 
   // === SPECIAL DOUBLES ===
   if (isLastTile) { totalDoubles += 1; reasons.push('1x Mahjong on Last Tile'); }
   if (isCleanSweep) { totalDoubles += 1; reasons.push('1x Clean Sweep'); }
-  if (isConcealed && isMahjong) { totalDoubles += 3; reasons.push('3x Concealed Mahjong'); }
+  // FIX #1: Concealed Mahjong REMOVED completely
   if (isDrawnStanding) { totalDoubles += 5; reasons.push('5x Drawn Standing Hand'); }
 
   return { totalDoubles: totalDoubles, reasons: reasons };
