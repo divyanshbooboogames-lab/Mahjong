@@ -868,41 +868,56 @@
     }
   })();
 
-  // ---- AUTH SYSTEM (localStorage) ----
+  // ---- AUTH SYSTEM (server-side) ----
   var isSignupMode = false;
-
-  function getUsers() {
-    try { return JSON.parse(localStorage.getItem('sj_users') || '{}'); } catch(e) { return {}; }
-  }
+  var currentUserPro = false;
 
   function getCurrentUser() {
     return localStorage.getItem('sj_current_user') || '';
   }
 
-  function handleLogin() {
+  async function handleLogin() {
     var user = document.getElementById('loginUser').value.trim();
     var pass = document.getElementById('loginPass').value;
     var errEl = document.getElementById('loginError');
+    var btn = document.getElementById('loginBtn');
     errEl.textContent = '';
 
     if (!user || user.length < 2) { errEl.textContent = 'Username must be at least 2 characters'; return; }
     if (!pass || pass.length < 3) { errEl.textContent = 'Password must be at least 3 characters'; return; }
 
-    var users = getUsers();
+    btn.textContent = 'Please wait...';
+    btn.disabled = true;
 
-    if (isSignupMode) {
-      if (users[user.toLowerCase()]) { errEl.textContent = 'Username already taken'; return; }
-      users[user.toLowerCase()] = { name: user, pass: pass, created: Date.now() };
-      localStorage.setItem('sj_users', JSON.stringify(users));
-      localStorage.setItem('sj_current_user', user);
-      enterApp(user);
-    } else {
-      var stored = users[user.toLowerCase()];
-      if (!stored) { errEl.textContent = 'User not found. Create an account first!'; return; }
-      if (stored.pass !== pass) { errEl.textContent = 'Wrong password'; return; }
-      localStorage.setItem('sj_current_user', stored.name);
-      enterApp(stored.name);
+    try {
+      var endpoint = isSignupMode ? '/api/register' : '/api/login';
+      var resp = await fetch(endpoint, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: user, password: pass })
+      });
+      var data = await resp.json();
+
+      if (!data.ok) { errEl.textContent = data.error || 'Error'; btn.textContent = isSignupMode ? 'Create Account' : 'Sign In'; btn.disabled = false; return; }
+
+      localStorage.setItem('sj_current_user', isSignupMode ? user : data.name);
+      currentUserPro = data.isPro || false;
+
+      if (isSignupMode) {
+        // Auto-login after signup
+        var loginResp = await fetch('/api/login', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: user, password: pass })
+        });
+        var loginData = await loginResp.json();
+        currentUserPro = loginData.isPro || false;
+      }
+
+      enterApp(localStorage.getItem('sj_current_user'));
+    } catch(e) {
+      errEl.textContent = 'Connection error. Try again.';
     }
+    btn.textContent = isSignupMode ? 'Create Account' : 'Sign In';
+    btn.disabled = false;
   }
 
   function toggleSignup() {
@@ -1061,6 +1076,23 @@
       var limitTag = h.limit ? ' <span style="font-size:9px;color:var(--purple-400);">(' + escHTML(h.limit) + ')</span>' : '';
       return '<div class="history-item"><div><div class="history-hand">' + escHTML(h.hand) + limitTag + '</div><div class="history-date">' + escHTML(dateStr) + ' &middot; ' + h.tiles + ' tiles &middot; ' + h.doubles + 'x doubles</div></div><div class="history-score">' + (h.score || 0).toLocaleString() + '</div></div>';
     }).join('');
+  }
+
+  // ---- PAYWALL ----
+  function showPaywall() {
+    document.getElementById('paywallOverlay').classList.add('open');
+    sfx('error');
+  }
+  function closePaywall() {
+    document.getElementById('paywallOverlay').classList.remove('open');
+  }
+  function copyUPI() {
+    var upi = document.getElementById('upiId').textContent;
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(upi).then(function() { showToast('UPI ID copied!'); });
+    } else {
+      showToast(upi);
+    }
   }
 
   // ---- SHARE SCORE ----
@@ -1308,7 +1340,7 @@
       var response = await fetchWithRetry('/api/scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: imageDataUrl })
+        body: JSON.stringify({ image: imageDataUrl, username: getCurrentUser() })
       }, 3, status);
 
       // Remove scan beam
@@ -1330,6 +1362,8 @@
       }
 
       if (!data.success) {
+        // Paywall: show upgrade screen if scan limit reached
+        if (data.upgrade) { showPaywall(); return; }
         var tip = 'Try retaking with better lighting';
         if (data.error && data.error.includes('API key')) tip = 'Server configuration issue — contact support';
         if (data.error && data.error.includes('rate limit')) tip = 'Wait a moment before scanning again';
@@ -2101,6 +2135,38 @@
 
   init();
   </script>
+
+  <!-- Paywall Modal -->
+  <div class="tile-picker-overlay" id="paywallOverlay" onclick="if(event.target===this)closePaywall()">
+    <div class="tile-picker" style="text-align:center;max-width:340px;">
+      <div style="font-size:36px;margin-bottom:8px;">&#127942;</div>
+      <h3 style="font-size:18px;margin-bottom:4px;">Upgrade to Pro</h3>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px;">You've used your 3 free scans today. Go Pro for unlimited AI scans!</p>
+      <div style="display:flex;gap:8px;margin-bottom:16px;">
+        <div style="flex:1;padding:12px 8px;border-radius:12px;border:1.5px solid rgba(139,92,246,0.15);background:rgba(255,255,255,0.5);">
+          <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;">Weekly</div>
+          <div style="font-size:20px;font-weight:700;color:var(--text);">&#8377;99</div>
+        </div>
+        <div style="flex:1;padding:12px 8px;border-radius:12px;border:2px solid #FF1493;background:rgba(255,20,147,0.05);position:relative;">
+          <div style="position:absolute;top:-8px;left:50%;transform:translateX(-50%);font-size:8px;font-weight:700;background:#FF1493;color:#fff;padding:2px 8px;border-radius:10px;">POPULAR</div>
+          <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;">Monthly</div>
+          <div style="font-size:20px;font-weight:700;color:#FF1493;">&#8377;299</div>
+        </div>
+        <div style="flex:1;padding:12px 8px;border-radius:12px;border:1.5px solid rgba(139,92,246,0.15);background:rgba(255,255,255,0.5);">
+          <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;">Yearly</div>
+          <div style="font-size:20px;font-weight:700;color:var(--text);">&#8377;1999</div>
+          <div style="font-size:9px;color:#34D399;font-weight:600;">Save 44%</div>
+        </div>
+      </div>
+      <div style="font-size:11px;font-weight:600;color:var(--text-soft);margin-bottom:8px;">Pay via UPI</div>
+      <div style="background:rgba(139,92,246,0.06);border:1px solid rgba(139,92,246,0.12);border-radius:10px;padding:12px;margin-bottom:12px;">
+        <div style="font-size:13px;font-weight:700;color:var(--text);" id="upiId">booboogamesai@upi</div>
+        <div style="font-size:10px;color:var(--text-muted);margin-top:4px;">Send payment + screenshot to WhatsApp</div>
+      </div>
+      <button class="btn-scan" onclick="copyUPI()" style="margin-top:0;font-size:13px;padding:12px;">Copy UPI ID</button>
+      <button class="picker-cancel" onclick="closePaywall()" style="margin-top:8px;">Maybe Later</button>
+    </div>
+  </div>
 
   <!-- Tile Picker Modal -->
   <div class="tile-picker-overlay" id="tilePickerOverlay" onclick="if(event.target===this)closeTilePicker()">

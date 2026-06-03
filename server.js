@@ -9,6 +9,7 @@ const OpenAI = require('openai');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const { SYSTEM_PROMPT, USER_PROMPT } = require('./ai-prompt');
+const users = require('./users');
 
 const app = express();
 
@@ -35,7 +36,16 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || '' });
 // ---- AI TILE SCAN ENDPOINT ----
 app.post('/api/scan', async (req, res) => {
   try {
-    const { image } = req.body;
+    const { image, username } = req.body;
+
+    // Check scan limit
+    if (username) {
+      const scanResult = users.recordScan(username);
+      if (!scanResult.allowed) {
+        return res.status(403).json({ success: false, error: 'Daily scan limit reached. Upgrade to Pro for unlimited scans!', upgrade: true, remaining: 0 });
+      }
+    }
+
     if (!image || typeof image !== 'string')
       return res.status(400).json({ success: false, error: 'No image provided' });
     if (!image.startsWith('data:image/'))
@@ -107,7 +117,8 @@ app.post('/api/scan', async (req, res) => {
     }
 
     console.log('[AI] Detected ' + validTiles.length + ' valid tiles');
-    res.json({ success: true, tiles: validTiles, count: validTiles.length, warnings });
+    const scansLeft = username ? users.getScansLeft(username) : null;
+    res.json({ success: true, tiles: validTiles, count: validTiles.length, warnings, scansLeft });
 
   } catch (err) {
     console.error('[AI] Error:', err.message);
@@ -117,6 +128,35 @@ app.post('/api/scan', async (req, res) => {
     if (err.status === 429) return res.status(429).json({ success: false, error: 'Too many requests. Wait and retry.' });
     res.status(500).json({ success: false, error: 'Scan failed. Please try again.' });
   }
+});
+
+// ---- AUTH API ----
+app.post('/api/register', (req, res) => {
+  const { username, password } = req.body;
+  const result = users.register(username, password);
+  res.json(result);
+});
+
+app.post('/api/login', (req, res) => {
+  const { username, password } = req.body;
+  const result = users.login(username, password);
+  if (result.ok) result.scansLeft = users.getScansLeft(username);
+  res.json(result);
+});
+
+app.get('/api/scans-left/:username', (req, res) => {
+  const left = users.getScansLeft(req.params.username);
+  res.json({ scansLeft: left, isPro: left === -1 });
+});
+
+// ---- ADMIN API ----
+app.post('/api/admin/activate', (req, res) => {
+  const { username, plan, adminKey } = req.body;
+  res.json(users.activatePro(username, plan, adminKey));
+});
+
+app.post('/api/admin/users', (req, res) => {
+  res.json(users.listUsers(req.body.adminKey));
 });
 
 // ---- HEALTH CHECK ----
