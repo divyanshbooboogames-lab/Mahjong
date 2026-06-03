@@ -179,26 +179,48 @@ function applyLimits(score, isEast) {
 // ============================================================
 
 function scoreFlowers(flowers, ownWind, roundWind) {
-  const seatNum = WINDS.indexOf(ownWind) + 1;
-  const roundNum = WINDS.indexOf(roundWind) + 1;
-  let points = 0;
-  const details = [];
+  var seatNum = WINDS.indexOf(ownWind) + 1;
+  var roundNum = WINDS.indexOf(roundWind) + 1;
+  var points = 0;
+  var details = [];
 
-  const set1 = flowers.filter(f => f.set === 1);
-  const set2 = flowers.filter(f => f.set === 2);
+  var set1 = flowers.filter(function(f) { return f.set === 1; });
+  var set2 = flowers.filter(function(f) { return f.set === 2; });
+  var hasBouquet1 = set1.length === 4;
+  var hasBouquet2 = set2.length === 4;
 
-  if (set1.length === 4) { points += 1000; details.push('Season Bouquet: 1000'); }
-  if (set2.length === 4) { points += 1000; details.push('Gentleman Bouquet: 1000'); }
-
-  const ownFlowers = flowers.filter(f => f.value === seatNum);
-  if (ownFlowers.length === 2) { points += 500; details.push('Own Flower Pair: 500'); }
-
-  if (roundNum !== seatNum) {
-    const roundFlowers = flowers.filter(f => f.value === roundNum);
-    if (roundFlowers.length === 2) { points += 500; details.push('Round Flower Pair: 500'); }
+  // Double Bouquet: 5000 (per rule book - overrides individual bouquets)
+  if (hasBouquet1 && hasBouquet2) {
+    points = 5000;
+    details.push('Double Bouquet: 5000');
+    return { points: points, details: details };
   }
 
-  return { points, details };
+  // Single Bouquet: 1000
+  if (hasBouquet1) { points += 1000; details.push('Flower Bouquet: 1000'); }
+  if (hasBouquet2) { points += 1000; details.push('Season Bouquet: 1000'); }
+
+  // Flower pairs only count if NOT part of a bouquet
+  var ownFlowers = flowers.filter(function(f) { return f.value === seatNum; });
+  var ownNotInBouquet = ownFlowers.filter(function(f) {
+    if (f.set === 1 && hasBouquet1) return false;
+    if (f.set === 2 && hasBouquet2) return false;
+    return true;
+  });
+  // Own flower pair: need 2 matching flowers not consumed by bouquet
+  if (ownNotInBouquet.length >= 2) { points += 500; details.push('Own Flower Pair: 500'); }
+
+  if (roundNum !== seatNum) {
+    var roundFlowers = flowers.filter(function(f) { return f.value === roundNum; });
+    var roundNotInBouquet = roundFlowers.filter(function(f) {
+      if (f.set === 1 && hasBouquet1) return false;
+      if (f.set === 2 && hasBouquet2) return false;
+      return true;
+    });
+    if (roundNotInBouquet.length >= 2) { points += 500; details.push('Round Flower Pair: 500'); }
+  }
+
+  return { points: points, details: details };
 }
 
 // ============================================================
