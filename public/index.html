@@ -610,6 +610,80 @@
       .tile-chip { width: 38px; height: 50px; font-size: 16px; }
       .toggle-chip { padding: 7px 10px; font-size: 11px; }
     }
+
+    /* ---- LOGIN LANDING PAGE ---- */
+    .login-bg {
+      position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none;
+    }
+    .login-tile {
+      position: absolute; font-size: 28px; font-weight: 800;
+      width: 40px; height: 52px; border-radius: 5px;
+      background: linear-gradient(175deg, #FFFDF7, #EDE5D3);
+      border: 1px solid #D4C8B0;
+      box-shadow: 0 2px 0 #C8BC9E, 0 3px 4px rgba(0,0,0,0.08);
+      display: flex; align-items: center; justify-content: center;
+      animation: tileRain var(--dur, 6s) linear infinite;
+      opacity: 0;
+    }
+    @keyframes tileRain {
+      0% { transform: translateY(-80px) rotate(var(--rot, 0deg)); opacity: 0; }
+      8% { opacity: 0.85; }
+      85% { opacity: 0.85; }
+      100% { transform: translateY(105vh) rotate(calc(var(--rot, 0deg) + 180deg)); opacity: 0; }
+    }
+    .login-logo {
+      text-align: center; margin-bottom: 32px;
+      animation: loginReveal 1s cubic-bezier(0.16,1,0.3,1) 0.3s backwards;
+    }
+    .login-logo .logo-text { font-size: 34px; }
+    .login-logo .logo-sub { font-size: 13px; letter-spacing: 6px; margin-top: 8px; }
+    @keyframes loginReveal {
+      from { opacity: 0; transform: scale(0.7) translateY(30px); }
+      to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    .login-card {
+      animation: cardSlideUp 0.8s cubic-bezier(0.16,1,0.3,1) 0.6s backwards;
+    }
+    @keyframes cardSlideUp {
+      from { opacity: 0; transform: translateY(40px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .login-input {
+      width: 100%; padding: 14px 18px; border-radius: var(--radius-sm);
+      background: rgba(255,255,255,0.7); border: 1.5px solid rgba(139,92,246,0.15);
+      color: var(--text); font-family: 'Poppins', sans-serif; font-size: 14px; font-weight: 500;
+      outline: none; transition: all 0.25s; box-shadow: var(--shadow-sm);
+      margin-bottom: 12px;
+    }
+    .login-input:focus { border-color: var(--pink-400); box-shadow: 0 0 0 3px rgba(255,20,147,0.1); }
+    .login-input::placeholder { color: var(--text-muted); }
+    body.dark-mode .login-input {
+      background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.1); color: #F0E6ED;
+    }
+    .login-welcome {
+      text-align: center; font-size: 13px; color: var(--text-soft);
+      margin-bottom: 20px; font-weight: 500;
+    }
+    .login-error {
+      text-align: center; font-size: 12px; color: var(--pink-500);
+      margin-bottom: 10px; min-height: 18px; font-weight: 600;
+    }
+    .login-toggle {
+      text-align: center; margin-top: 16px; font-size: 12px; color: var(--text-muted);
+    }
+    .login-toggle a {
+      color: var(--pink-400); cursor: pointer; font-weight: 600; text-decoration: none;
+    }
+    .login-toggle a:hover { text-decoration: underline; }
+    .user-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 11px; font-weight: 600; padding: 4px 12px;
+      border-radius: var(--radius-pill); background: rgba(255,20,147,0.08);
+      border: 1px solid rgba(255,20,147,0.15); color: var(--pink-400);
+      cursor: pointer; transition: all 0.2s; position: fixed; top: 18px; left: 68px; z-index: 90;
+    }
+    .user-badge:hover { background: rgba(255,20,147,0.15); }
+    body.dark-mode .user-badge { background: rgba(255,20,147,0.12); color: var(--pink-300); }
   </style>
 </head>
 <body>
@@ -626,8 +700,32 @@
   <!-- Mute -->
   <button class="mute-btn" id="muteBtn" onclick="toggleMute()">&#128266;</button>
 
+  <!-- User Badge (shown when logged in) -->
+  <div class="user-badge" id="userBadge" style="display:none;" onclick="logoutUser()"></div>
+
+  <!-- ========== SCREEN 0: LOGIN ========== -->
+  <div class="screen active" id="screenLogin">
+    <div class="login-bg" id="loginTilesBg"></div>
+    <div class="container" style="position:relative;z-index:1;">
+      <div class="login-logo">
+        <div class="logo-text">SCOREJONG</div>
+        <div class="logo-sub">SCORE CALCULATOR</div>
+      </div>
+      <div class="glass login-card">
+        <div class="login-welcome" id="loginWelcome">Welcome! Sign in to continue.</div>
+        <div class="login-error" id="loginError"></div>
+        <input class="login-input" type="text" id="loginUser" placeholder="Username" autocomplete="username" maxlength="20">
+        <input class="login-input" type="password" id="loginPass" placeholder="Password" autocomplete="current-password" maxlength="30">
+        <button class="btn-scan" id="loginBtn" onclick="handleLogin()" style="margin-top:8px;">Sign In</button>
+        <div class="login-toggle" id="loginToggle">
+          New here? <a onclick="toggleSignup()">Create account</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ========== SCREEN 1: SETTINGS ========== -->
-  <div class="screen active" id="screenSettings">
+  <div class="screen" id="screenSettings">
     <div class="container">
       <div class="logo">
         <div class="logo-text">SCOREJONG</div>
@@ -747,6 +845,112 @@
     </div>
     <canvas id="confettiCanvas"></canvas>
   </div>
+
+  <!-- ========== LOGIN JS ========== -->
+  <script>
+  // ---- ANIMATED FALLING TILES ----
+  (function() {
+    var bg = document.getElementById('loginTilesBg');
+    if (!bg) return;
+    var symbols = ['中','發','東','南','西','北','一','二','三','四','五','六','七','八','九','B','1','2','3','4','5','6','7','8','9'];
+    var colors = ['#FF1493','#34D399','#9333EA','#60A5FA','#F472B6','#A78BFA','#FB923C'];
+    for (var i = 0; i < 18; i++) {
+      var tile = document.createElement('div');
+      tile.className = 'login-tile';
+      tile.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+      tile.style.color = colors[Math.floor(Math.random() * colors.length)];
+      tile.style.left = (Math.random() * 94 + 3) + '%';
+      tile.style.setProperty('--dur', (4 + Math.random() * 6) + 's');
+      tile.style.setProperty('--rot', (Math.random() * 40 - 20) + 'deg');
+      tile.style.animationDelay = (Math.random() * 8) + 's';
+      tile.style.fontSize = (18 + Math.random() * 14) + 'px';
+      bg.appendChild(tile);
+    }
+  })();
+
+  // ---- AUTH SYSTEM (localStorage) ----
+  var isSignupMode = false;
+
+  function getUsers() {
+    try { return JSON.parse(localStorage.getItem('sj_users') || '{}'); } catch(e) { return {}; }
+  }
+
+  function getCurrentUser() {
+    return localStorage.getItem('sj_current_user') || '';
+  }
+
+  function handleLogin() {
+    var user = document.getElementById('loginUser').value.trim();
+    var pass = document.getElementById('loginPass').value;
+    var errEl = document.getElementById('loginError');
+    errEl.textContent = '';
+
+    if (!user || user.length < 2) { errEl.textContent = 'Username must be at least 2 characters'; return; }
+    if (!pass || pass.length < 3) { errEl.textContent = 'Password must be at least 3 characters'; return; }
+
+    var users = getUsers();
+
+    if (isSignupMode) {
+      if (users[user.toLowerCase()]) { errEl.textContent = 'Username already taken'; return; }
+      users[user.toLowerCase()] = { name: user, pass: pass, created: Date.now() };
+      localStorage.setItem('sj_users', JSON.stringify(users));
+      localStorage.setItem('sj_current_user', user);
+      enterApp(user);
+    } else {
+      var stored = users[user.toLowerCase()];
+      if (!stored) { errEl.textContent = 'User not found. Create an account first!'; return; }
+      if (stored.pass !== pass) { errEl.textContent = 'Wrong password'; return; }
+      localStorage.setItem('sj_current_user', stored.name);
+      enterApp(stored.name);
+    }
+  }
+
+  function toggleSignup() {
+    isSignupMode = !isSignupMode;
+    var btn = document.getElementById('loginBtn');
+    var welcome = document.getElementById('loginWelcome');
+    var toggle = document.getElementById('loginToggle');
+    document.getElementById('loginError').textContent = '';
+    if (isSignupMode) {
+      btn.textContent = 'Create Account';
+      welcome.textContent = 'Create your Scorejong account';
+      toggle.innerHTML = 'Already have an account? <a onclick="toggleSignup()">Sign in</a>';
+    } else {
+      btn.textContent = 'Sign In';
+      welcome.textContent = 'Welcome! Sign in to continue.';
+      toggle.innerHTML = 'New here? <a onclick="toggleSignup()">Create account</a>';
+    }
+  }
+
+  function enterApp(username) {
+    document.getElementById('userBadge').style.display = 'inline-flex';
+    document.getElementById('userBadge').textContent = username + ' (logout)';
+    // showScreen and sfx defined in main script - use setTimeout to ensure loaded
+    setTimeout(function() {
+      if (typeof showScreen === 'function') showScreen('screenSettings');
+      if (typeof sfx === 'function') sfx('win');
+    }, 50);
+  }
+
+  function logoutUser() {
+    localStorage.removeItem('sj_current_user');
+    document.getElementById('userBadge').style.display = 'none';
+    showScreen('screenLogin');
+    document.getElementById('loginUser').value = '';
+    document.getElementById('loginPass').value = '';
+    document.getElementById('loginError').textContent = '';
+  }
+
+  // Enter key submits login
+  document.getElementById('loginPass').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') handleLogin();
+  });
+  document.getElementById('loginUser').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') document.getElementById('loginPass').focus();
+  });
+
+  // Auto-login checked after main JS loads (see bottom of main script)
+  </script>
 
   <!-- ========== JS ========== -->
   <script src="/mahjong-scorer-core.js"></script>
@@ -954,6 +1158,16 @@
   // Load on startup
   loadSettings();
   renderHistory();
+
+  // Auto-login: if user is already signed in, skip login screen
+  (function() {
+    var user = getCurrentUser();
+    if (user) {
+      document.getElementById('userBadge').style.display = 'inline-flex';
+      document.getElementById('userBadge').textContent = user + ' (logout)';
+      showScreen('screenSettings');
+    }
+  })();
 
   // ---- CAMERA ----
   function goToScan() {
@@ -1193,7 +1407,7 @@
     else if (t.suit === 'circles') { sym = t.value; label = t.value + ' Dot'; col = '#93C5FD'; }
     else if (t.type === 'wind') { sym = CHAR_MAP.winds[t.value] || '?'; label = (t.value || '?').charAt(0).toUpperCase() + ' Wind'; col = '#C4B5FD'; }
     else if (t.type === 'dragon') { sym = CHAR_MAP.dragons[t.value] || '?'; label = (t.value || '?').charAt(0).toUpperCase() + ' Drg'; col = t.value === 'green' ? '#34D399' : t.value === 'white' ? '#C4B5FD' : '#FF1493'; }
-    else if (t.type === 'flower') { sym = '\u{1F338}'; label = 'Flower'; col = '#DDB4F0'; }
+    else if (t.type === 'flower') { sym = t.value; label = (t.set === 1 ? 'F' : 'S') + t.value; col = t.set === 1 ? '#F472B6' : '#A78BFA'; }
     // Escape all dynamic values to prevent XSS from AI response data
     sym = escHTML(sym);
     label = escHTML(label);
@@ -1913,8 +2127,12 @@
         <div class="picker-grid" id="pickerDragons"></div>
       </div>
       <div class="picker-section">
-        <div class="picker-section-label">Flowers</div>
+        <div class="picker-section-label">Flowers (1-4)</div>
         <div class="picker-grid" id="pickerFlowers"></div>
+      </div>
+      <div class="picker-section">
+        <div class="picker-section-label">Seasons (1-4)</div>
+        <div class="picker-grid" id="pickerSeasons"></div>
       </div>
       <button class="picker-cancel" onclick="closeTilePicker()">CANCEL</button>
     </div>
@@ -2093,15 +2311,19 @@
     });
     document.getElementById('pickerDragons').innerHTML = html;
 
-    // Flowers (Set 1: 1-4, Set 2: 1-4)
+    // Flowers (Set 1: 1-4)
     html = '';
-    var flowerNames = {1:{1:'Spring',2:'Summer',3:'Autumn',4:'Winter'},2:{1:'Plum',2:'Orchid',3:'Chrysan.',4:'Bamboo'}};
-    for (var s = 1; s <= 2; s++) {
-      for (var v = 1; v <= 4; v++) {
-        html += '<button class="picker-btn" onclick="addTileFromPicker({type:\'flower\',set:' + s + ',value:' + v + '})" style="color:#DDB4F0;">🌸<span>' + escHTML(flowerNames[s][v]) + '</span></button>';
-      }
+    for (var v = 1; v <= 4; v++) {
+      html += '<button class="picker-btn" onclick="addTileFromPicker({type:\'flower\',set:1,value:' + v + '})" style="color:#F472B6;">' + v + '<span>F' + v + '</span></button>';
     }
     document.getElementById('pickerFlowers').innerHTML = html;
+
+    // Seasons (Set 2: 1-4)
+    html = '';
+    for (var v = 1; v <= 4; v++) {
+      html += '<button class="picker-btn" onclick="addTileFromPicker({type:\'flower\',set:2,value:' + v + '})" style="color:#A78BFA;">' + v + '<span>S' + v + '</span></button>';
+    }
+    document.getElementById('pickerSeasons').innerHTML = html;
   }
   </script>
 </body>
