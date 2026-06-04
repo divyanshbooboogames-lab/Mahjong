@@ -25,7 +25,15 @@ app.use('/api/scan', rateLimit({
   message: { success: false, error: 'Scan rate limit reached. Wait a moment.' }
 }));
 
-// Serve static files
+// Block access to sensitive files
+app.use((req, res, next) => {
+  if (req.path.match(/users-db|\.json$|\.js$/i) && !req.path.startsWith('/api')) {
+    if (!req.path.match(/mahjong-scorer|\.js$/)) { return res.status(404).end(); }
+  }
+  next();
+});
+
+// Serve static files (public folder only)
 app.use(express.static(path.join(__dirname, 'public'), {
   maxAge: process.env.NODE_ENV === 'production' ? '1h' : 0, etag: true
 }));
@@ -157,6 +165,16 @@ app.post('/api/admin/activate', (req, res) => {
 
 app.post('/api/admin/users', (req, res) => {
   res.json(users.listUsers(req.body.adminKey));
+});
+
+app.post('/api/admin/deactivate', (req, res) => {
+  const { username, adminKey } = req.body;
+  res.json(users.deactivatePro(username, adminKey));
+});
+
+app.post('/api/admin/reset-password', (req, res) => {
+  const { username, newPassword, adminKey } = req.body;
+  res.json(users.resetPassword(username, newPassword, adminKey));
 });
 
 // ---- HEALTH CHECK ----

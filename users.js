@@ -1,49 +1,122 @@
 // ============================================================
 // SCOREJONG - User Management & Subscription System
+// Secure: hashed passwords, input sanitization, timing-safe auth
 // ============================================================
 
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
 const DB_FILE = path.join(__dirname, 'users-db.json');
 const FREE_SCANS_PER_DAY = 3;
-const ADMIN_KEY = process.env.ADMIN_KEY || 'scorejong-admin-2024';
+const ADMIN_KEY = process.env.ADMIN_KEY || 'be6e5c96686bb7198d53c435b2bc4bbba10f8f384722b53d';
 
-// Load/save user database
+// ---- PASSWORD HASHING ----
+function hashPassword(password, salt) {
+  if (!salt) salt = crypto.randomBytes(16).toString('hex');
+  var hash = crypto.pbkdf2Sync(password, salt, 10000, 64, 'sha512').toString('hex');
+  return { hash: hash, salt: salt };
+}
+
+function verifyPassword(password, storedHash, storedSalt) {
+  if (!storedSalt) return password === storedHash; // backward compat for pre-hash accounts
+  var result = hashPassword(password, storedSalt);
+  // Timing-safe comparison to prevent timing attacks
+  try {
+    return crypto.timingSafeEqual(Buffer.from(result.hash), Buffer.from(storedHash));
+  } catch(e) { return false; }
+}
+
+// ---- INPUT SANITIZATION ----
+function sanitizeUsername(name) {
+  if (typeof name !== 'string') return '';
+  return name.replace(/[^a-zA-Z0-9_\-]/g, '').slice(0, 20);
+}
+
+function validateInput(username, password) {
+  if (!username || typeof username !== 'string') return 'Username is required';
+  if (!password || typeof password !== 'string') return 'Password is required';
+  var clean = sanitizeUsername(username);
+  if (clean.length < 2) return 'Username must be 2-20 characters (letters, numbers, _ -)';
+  if (password.length < 4) return 'Password must be at least 4 characters';
+  if (password.length > 50) return 'Password too long';
+  return null;
+}
+
+// ---- DATABASE ----
 function loadDB() {
   try { return JSON.parse(fs.readFileSync(DB_FILE, 'utf8')); }
   catch(e) { return {}; }
 }
 
 function saveDB(db) {
-  fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
+  var tmp = DB_FILE + '.tmp';
+  fs.writeFileSync(tmp, JSON.stringify(db, null, 2));
+  fs.renameSync(tmp, DB_FILE); // atomic write
 }
 
-// Get today's date string
 function today() { return new Date().toISOString().slice(0, 10); }
 
-// Check if user has active pro subscription
 function isPro(user) {
   if (!user || !user.pro) return false;
   if (!user.proExpiry) return false;
   return new Date(user.proExpiry) > new Date();
 }
 
-// Get remaining scans for a user today
-function getScansLeft(username) {
+// ---- PUBLIC API ----
+
+function register(username, password) {
+  var err = validateInput(username, password);
+  if (err) return { ok: false, error: err };
+
   var db = loadDB();
-  var user = db[username.toLowerCase()];
+  var key = sanitizeUsername(username).toLowerCase();
+  if (db[key]) return { ok: false, error: 'Username already taken' };
+
+  var hashed = hashPassword(password);
+  db[key] = {
+    name: sanitizeUsername(username),
+    pass: hashed.hash,
+    salt: hashed.salt,
+    created: new Date().toISOString(),
+    pro: false,
+    proExpiry: null,
+    scanDate: null,
+    scanCount: 0,
+    totalScans: 0
+  };
+  saveDB(db);
+  return { ok: true };
+}
+
+function login(username, password) {
+  var err = validateInput(username, password);
+  if (err) return { ok: false, error: err };
+
+  var db = loadDB();
+  var key = sanitizeUsername(username).toLowerCase();
+  var user = db[key];
+  if (!user) return { ok: false, error: 'User not found' };
+  if (!verifyPassword(password, user.pass, user.salt)) return { ok: false, error: 'Wrong password' };
+
+  return { ok: true, name: user.name, isPro: isPro(user), proExpiry: user.proExpiry };
+}
+
+function getScansLeft(username) {
+  if (!username) return 0;
+  var db = loadDB();
+  var user = db[sanitizeUsername(username).toLowerCase()];
   if (!user) return 0;
-  if (isPro(user)) return -1; // unlimited
+  if (isPro(user)) return -1;
   var d = today();
   if (user.scanDate !== d) return FREE_SCANS_PER_DAY;
   return Math.max(0, FREE_SCANS_PER_DAY - (user.scanCount || 0));
 }
 
-// Record a scan
 function recordScan(username) {
+  if (!username) return { allowed: false, error: 'Not logged in' };
   var db = loadDB();
-  var key = username.toLowerCase();
+  var key = sanitizeUsername(username).toLowerCase();
   var user = db[key];
   if (!user) return { allowed: false, error: 'User not found' };
 
@@ -67,38 +140,23 @@ function recordScan(username) {
   return { allowed: true, remaining: FREE_SCANS_PER_DAY - user.scanCount, isPro: false };
 }
 
-// Register user
-function register(username, password) {
-  if (!username || username.length < 2) return { ok: false, error: 'Username too short' };
-  if (!password || password.length < 3) return { ok: false, error: 'Password too short' };
-  var db = loadDB();
-  var key = username.toLowerCase();
-  if (db[key]) return { ok: false, error: 'Username taken' };
-  db[key] = {
-    name: username, pass: password, created: new Date().toISOString(),
-    pro: false, proExpiry: null, scanDate: null, scanCount: 0, totalScans: 0
-  };
-  saveDB(db);
-  return { ok: true };
+// ---- ADMIN API ----
+
+function verifyAdmin(adminKey) {
+  if (!adminKey || typeof adminKey !== 'string') return false;
+  try {
+    return crypto.timingSafeEqual(Buffer.from(adminKey), Buffer.from(ADMIN_KEY));
+  } catch(e) { return false; }
 }
 
-// Login
-function login(username, password) {
-  var db = loadDB();
-  var key = username.toLowerCase();
-  var user = db[key];
-  if (!user) return { ok: false, error: 'User not found' };
-  if (user.pass !== password) return { ok: false, error: 'Wrong password' };
-  return { ok: true, name: user.name, isPro: isPro(user), proExpiry: user.proExpiry };
-}
-
-// Admin: activate pro
 function activatePro(username, plan, adminKey) {
-  if (adminKey !== ADMIN_KEY) return { ok: false, error: 'Invalid admin key' };
+  if (!verifyAdmin(adminKey)) return { ok: false, error: 'Unauthorized' };
+  if (!username) return { ok: false, error: 'Username required' };
+
   var db = loadDB();
-  var key = username.toLowerCase();
+  var key = sanitizeUsername(username).toLowerCase();
   var user = db[key];
-  if (!user) return { ok: false, error: 'User not found' };
+  if (!user) return { ok: false, error: 'User not found: ' + key };
 
   var now = new Date();
   var expiry = new Date(user.proExpiry && new Date(user.proExpiry) > now ? user.proExpiry : now);
@@ -112,15 +170,29 @@ function activatePro(username, plan, adminKey) {
   user.proExpiry = expiry.toISOString();
   db[key] = user;
   saveDB(db);
+  console.log('[ADMIN] Activated Pro for ' + user.name + ': ' + plan + ' until ' + user.proExpiry);
   return { ok: true, user: user.name, plan: plan, expiry: user.proExpiry };
 }
 
-// Admin: list all users
+function deactivatePro(username, adminKey) {
+  if (!verifyAdmin(adminKey)) return { ok: false, error: 'Unauthorized' };
+  var db = loadDB();
+  var key = sanitizeUsername(username).toLowerCase();
+  var user = db[key];
+  if (!user) return { ok: false, error: 'User not found' };
+  user.pro = false;
+  user.proExpiry = null;
+  db[key] = user;
+  saveDB(db);
+  return { ok: true, user: user.name };
+}
+
 function listUsers(adminKey) {
-  if (adminKey !== ADMIN_KEY) return { ok: false, error: 'Invalid admin key' };
+  if (!verifyAdmin(adminKey)) return { ok: false, error: 'Unauthorized' };
   var db = loadDB();
   return {
     ok: true,
+    count: Object.keys(db).length,
     users: Object.values(db).map(function(u) {
       return {
         name: u.name, pro: isPro(u), proExpiry: u.proExpiry,
@@ -130,4 +202,23 @@ function listUsers(adminKey) {
   };
 }
 
-module.exports = { register, login, recordScan, getScansLeft, activatePro, listUsers, isPro, FREE_SCANS_PER_DAY };
+function resetPassword(username, newPassword, adminKey) {
+  if (!verifyAdmin(adminKey)) return { ok: false, error: 'Unauthorized' };
+  if (!newPassword || newPassword.length < 4) return { ok: false, error: 'Password too short' };
+  var db = loadDB();
+  var key = sanitizeUsername(username).toLowerCase();
+  var user = db[key];
+  if (!user) return { ok: false, error: 'User not found' };
+  var hashed = hashPassword(newPassword);
+  user.pass = hashed.hash;
+  user.salt = hashed.salt;
+  db[key] = user;
+  saveDB(db);
+  return { ok: true, user: user.name };
+}
+
+module.exports = {
+  register, login, recordScan, getScansLeft,
+  activatePro, deactivatePro, listUsers, resetPassword,
+  isPro, FREE_SCANS_PER_DAY
+};

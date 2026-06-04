@@ -1,7 +1,8 @@
 {
   "ayush": {
     "name": "ayush",
-    "pass": "ayush123",
+    "pass": "9669cc32915bb1cf06dd0ad08dfa54881485f6a20d4e9076d11065f82368645178c4d06d8b87f3103dea46e115844db574e6faeca68e46b996d5a6341ca12ff7",
+    "salt": "eedf9ea0f3089d95e48c75416fb47fa0",
     "created": "2026-06-03T00:00:00.000Z",
     "pro": true,
     "proExpiry": "2099-12-31T23:59:59.000Z",
@@ -11,7 +12,8 @@
   },
   "mansi": {
     "name": "Mansi",
-    "pass": "mansi123",
+    "pass": "3ad7bf5a7e9c4a5ae0a691688a44b8db8959cf735e284338b2705c9e35d9892491470e87f7eaceda5611b037eb0007895c79286cb3930a53fbccaf3684d965be",
+    "salt": "4e81303bad8f13e50b21246a69cb438c",
     "created": "2026-06-03T00:00:00.000Z",
     "pro": true,
     "proExpiry": "2099-12-31T23:59:59.000Z",
