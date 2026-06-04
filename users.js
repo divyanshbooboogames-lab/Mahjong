@@ -124,7 +124,14 @@ function login(username, password) {
   if (!user) return { ok: false, error: 'User not found' };
   if (!verifyPassword(password, user.pass, user.salt)) return { ok: false, error: 'Wrong password' };
 
-  return { ok: true, name: user.name, isPro: isPro(user), proExpiry: user.proExpiry, referralCode: user.referralCode || '' };
+  // Auto-generate referral code for users created before referral system
+  if (!user.referralCode) {
+    user.referralCode = generateReferralCode(user.name);
+    db[key] = user;
+    saveDB(db);
+  }
+
+  return { ok: true, name: user.name, isPro: isPro(user), proExpiry: user.proExpiry, referralCode: user.referralCode };
 }
 
 function getScansLeft(username) {
