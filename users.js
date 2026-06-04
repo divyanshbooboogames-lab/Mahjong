@@ -8,7 +8,7 @@ const path = require('path');
 const crypto = require('crypto');
 
 const DB_FILE = path.join(__dirname, 'users-db.json');
-const FREE_SCANS_PER_DAY = 3;
+const FREE_SCANS_TOTAL = 20; // lifetime free scans, then must upgrade
 const ADMIN_KEY = process.env.ADMIN_KEY || 'be6e5c96686bb7198d53c435b2bc4bbba10f8f384722b53d';
 
 // ---- PASSWORD HASHING ----
@@ -107,10 +107,9 @@ function getScansLeft(username) {
   var db = loadDB();
   var user = db[sanitizeUsername(username).toLowerCase()];
   if (!user) return 0;
-  if (isPro(user)) return -1;
-  var d = today();
-  if (user.scanDate !== d) return FREE_SCANS_PER_DAY;
-  return Math.max(0, FREE_SCANS_PER_DAY - (user.scanCount || 0));
+  if (isPro(user)) return -1; // unlimited
+  var used = user.totalScans || 0;
+  return Math.max(0, FREE_SCANS_TOTAL - used);
 }
 
 function recordScan(username) {
@@ -127,17 +126,15 @@ function recordScan(username) {
     return { allowed: true, remaining: -1, isPro: true };
   }
 
-  var d = today();
-  if (user.scanDate !== d) { user.scanDate = d; user.scanCount = 0; }
-  if (user.scanCount >= FREE_SCANS_PER_DAY) {
-    return { allowed: false, error: 'Daily scan limit reached', remaining: 0, isPro: false };
+  var used = user.totalScans || 0;
+  if (used >= FREE_SCANS_TOTAL) {
+    return { allowed: false, error: 'Free scans used up. Upgrade to Pro for unlimited scans!', remaining: 0, isPro: false };
   }
 
-  user.scanCount += 1;
-  user.totalScans = (user.totalScans || 0) + 1;
+  user.totalScans = used + 1;
   db[key] = user;
   saveDB(db);
-  return { allowed: true, remaining: FREE_SCANS_PER_DAY - user.scanCount, isPro: false };
+  return { allowed: true, remaining: FREE_SCANS_TOTAL - user.totalScans, isPro: false };
 }
 
 // ---- ADMIN API ----
@@ -220,5 +217,5 @@ function resetPassword(username, newPassword, adminKey) {
 module.exports = {
   register, login, recordScan, getScansLeft,
   activatePro, deactivatePro, listUsers, resetPassword,
-  isPro, FREE_SCANS_PER_DAY
+  isPro, FREE_SCANS_TOTAL
 };
