@@ -4,6 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Scorejong — Score Calculator</title>
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#FF1493">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="/icon-192.png">
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800;900&family=Bungee+Shade&family=Bangers&family=Permanent+Marker&display=swap" rel="stylesheet">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -680,7 +685,7 @@
       font-size: 11px; font-weight: 600; padding: 4px 12px;
       border-radius: var(--radius-pill); background: rgba(255,20,147,0.08);
       border: 1px solid rgba(255,20,147,0.15); color: var(--pink-400);
-      cursor: pointer; transition: all 0.2s; position: fixed; top: 18px; left: 68px; z-index: 90;
+      cursor: pointer; transition: all 0.2s; position: fixed; top: 18px; left: 118px; z-index: 90;
     }
     .user-badge:hover { background: rgba(255,20,147,0.15); }
     body.dark-mode .user-badge { background: rgba(255,20,147,0.12); color: var(--pink-300); }
@@ -696,6 +701,9 @@
 
   <!-- Theme Toggle -->
   <button class="theme-btn" id="themeBtn" onclick="toggleTheme()" title="Toggle dark mode">&#9788;</button>
+
+  <!-- Language Toggle -->
+  <button class="theme-btn" id="langBtn" onclick="toggleLang()" title="Language" style="left:68px;font-size:13px;font-weight:700;">EN</button>
 
   <!-- Mute -->
   <button class="mute-btn" id="muteBtn" onclick="toggleMute()">&#128266;</button>
@@ -716,6 +724,7 @@
         <div class="login-error" id="loginError"></div>
         <input class="login-input" type="text" id="loginUser" placeholder="Username" autocomplete="username" maxlength="20">
         <input class="login-input" type="password" id="loginPass" placeholder="Password" autocomplete="current-password" maxlength="30">
+        <input class="login-input" type="text" id="loginReferral" placeholder="Referral code (optional)" maxlength="20" style="display:none;">
         <button class="btn-scan" id="loginBtn" onclick="handleLogin()" style="margin-top:8px;">Sign In</button>
         <div class="login-toggle" id="loginToggle">
           New here? <a onclick="toggleSignup()">Create account</a>
@@ -773,6 +782,7 @@
         </div>
 
         <button class="btn-scan" onclick="goToScan()">Scan My Hand</button>
+        <button class="btn-outline" onclick="shareReferral()" style="margin-top:10px;">Invite Friend (+5 Free Scans)</button>
       </div>
 
       <!-- Score History -->
@@ -790,6 +800,10 @@
     <div class="container">
       <div class="logo">
         <div class="logo-text" style="font-size:22px;">SCAN TILES</div>
+      </div>
+
+      <div id="scansLeftBadge" style="text-align:center;margin-bottom:10px;display:none;">
+        <span style="font-size:11px;font-weight:700;padding:5px 14px;border-radius:100px;background:rgba(255,20,147,0.08);border:1px solid rgba(255,20,147,0.15);color:var(--pink-400);" id="scansLeftText"></span>
       </div>
 
       <div class="glass">
@@ -891,15 +905,21 @@
 
     try {
       var endpoint = isSignupMode ? '/api/register' : '/api/login';
+      var bodyData = { username: user, password: pass };
+      if (isSignupMode) {
+        var refCode = document.getElementById('loginReferral').value.trim();
+        if (refCode) bodyData.referralCode = refCode;
+      }
       var resp = await fetch(endpoint, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: user, password: pass })
+        body: JSON.stringify(bodyData)
       });
       var data = await resp.json();
 
       if (!data.ok) { errEl.textContent = data.error || 'Error'; btn.textContent = isSignupMode ? 'Create Account' : 'Sign In'; btn.disabled = false; return; }
 
       localStorage.setItem('sj_current_user', isSignupMode ? user : data.name);
+      if (data.referralCode) localStorage.setItem('sj_referral_code', data.referralCode);
       currentUserPro = data.isPro || false;
 
       if (isSignupMode) {
@@ -926,25 +946,38 @@
     var welcome = document.getElementById('loginWelcome');
     var toggle = document.getElementById('loginToggle');
     document.getElementById('loginError').textContent = '';
+    var refInput = document.getElementById('loginReferral');
     if (isSignupMode) {
       btn.textContent = 'Create Account';
       welcome.textContent = 'Create your Scorejong account';
       toggle.innerHTML = 'Already have an account? <a onclick="toggleSignup()">Sign in</a>';
+      if (refInput) refInput.style.display = 'block';
     } else {
       btn.textContent = 'Sign In';
       welcome.textContent = 'Welcome! Sign in to continue.';
       toggle.innerHTML = 'New here? <a onclick="toggleSignup()">Create account</a>';
+      if (refInput) refInput.style.display = 'none';
     }
   }
 
   function enterApp(username) {
     document.getElementById('userBadge').style.display = 'inline-flex';
     document.getElementById('userBadge').textContent = username + ' (logout)';
-    // showScreen and sfx defined in main script - use setTimeout to ensure loaded
     setTimeout(function() {
       if (typeof showScreen === 'function') showScreen('screenSettings');
       if (typeof sfx === 'function') sfx('win');
     }, 50);
+  }
+
+  function shareReferral() {
+    var code = localStorage.getItem('sj_referral_code') || '';
+    if (!code) { if (typeof showToast === 'function') showToast('Login first to get your referral code'); return; }
+    var msg = 'Try Scorejong - AI Mahjong Score Calculator! Use my referral code: ' + code + ' to get 5 extra free scans! https://web-production-768c6.up.railway.app';
+    if (navigator.share) {
+      navigator.share({ title: 'Scorejong', text: msg }).catch(function() {});
+    } else if (navigator.clipboard) {
+      navigator.clipboard.writeText(msg).then(function() { if (typeof showToast === 'function') showToast('Referral link copied!'); });
+    }
   }
 
   function logoutUser() {
@@ -963,6 +996,31 @@
   document.getElementById('loginUser').addEventListener('keydown', function(e) {
     if (e.key === 'Enter') document.getElementById('loginPass').focus();
   });
+
+  // ---- MULTI-LANGUAGE ----
+  var LANG = localStorage.getItem('sj_lang') || 'en';
+  var TRANSLATIONS = {
+    en: { scoreCalc:'SCORE CALCULATOR', scanTiles:'SCAN TILES', gameMode:'GAME MODE', roundWind:'ROUND WIND', yourSeat:'YOUR SEAT', scoringOpts:'SCORING OPTIONS', mahjong:'Mahjong', concealed:'Concealed', lastTile:'Last Tile', cleanSweep:'Clean Sweep', scanHand:'Scan My Hand', inviteFriend:'Invite Friend (+5 Free Scans)', recentScores:'Recent Scores', calcScore:'Calculate Score', retake:'Retake Photo', backSettings:'Back to Settings', yourScore:'YOUR SCORE', scanAgain:'Scan Again', shareScore:'Share Score', settings:'Settings', welcome:'Welcome! Sign in to continue.', createAcc:'Create your Scorejong account', signIn:'Sign In', createAccount:'Create Account', newHere:'New here?', alreadyHave:'Already have an account?', east:'EAST', south:'SOUTH', west:'WEST', north:'NORTH' },
+    zh: { scoreCalc:'麻雀計分器', scanTiles:'掃描牌', gameMode:'遊戲模式', roundWind:'圈風', yourSeat:'位風', scoringOpts:'計分選項', mahjong:'食糊', concealed:'暗糊', lastTile:'海底撈月', cleanSweep:'包自摸', scanHand:'掃描我的牌', inviteFriend:'邀請朋友 (+5次免費掃描)', recentScores:'最近分數', calcScore:'計算分數', retake:'重新拍照', backSettings:'返回設定', yourScore:'你的分數', scanAgain:'再掃描', shareScore:'分享分數', settings:'設定', welcome:'歡迎！請登入繼續。', createAcc:'建立你的 Scorejong 帳戶', signIn:'登入', createAccount:'建立帳戶', newHere:'新用戶？', alreadyHave:'已有帳戶？', east:'東', south:'南', west:'西', north:'北' }
+  };
+
+  function t(key) { return (TRANSLATIONS[LANG] || TRANSLATIONS.en)[key] || key; }
+
+  function toggleLang() {
+    LANG = LANG === 'en' ? 'zh' : 'en';
+    localStorage.setItem('sj_lang', LANG);
+    document.getElementById('langBtn').textContent = LANG === 'en' ? 'EN' : '中';
+    applyTranslations();
+  }
+
+  function applyTranslations() {
+    // Update all translatable elements
+    document.querySelectorAll('[data-t]').forEach(function(el) {
+      el.textContent = t(el.getAttribute('data-t'));
+    });
+  }
+
+  if (LANG === 'zh') document.getElementById('langBtn').textContent = '中';
 
   // Auto-login checked after main JS loads (see bottom of main script)
   </script>
@@ -1095,6 +1153,12 @@
     }
   }
 
+  function sendWhatsApp() {
+    var user = getCurrentUser() || 'unknown';
+    var msg = 'Hi! I just paid for Scorejong Pro.\nUsername: ' + user + '\nPlease activate my account.';
+    window.open('https://wa.me/918141800084?text=' + encodeURIComponent(msg), '_blank');
+  }
+
   // ---- SHARE SCORE ----
   function shareScore() {
     var scoreEl = document.getElementById('scoreNumber');
@@ -1206,9 +1270,31 @@
     readSettings();
     showScreen('screenScan');
     resetScanUI();
+    updateScansLeftBadge();
     sfx('click');
     // Auto open camera
     setTimeout(function() { document.getElementById('cameraInput').click(); }, 400);
+  }
+
+  function updateScansLeftBadge() {
+    var user = getCurrentUser();
+    if (!user) return;
+    fetch('/api/scans-left/' + encodeURIComponent(user)).then(function(r) { return r.json(); }).then(function(d) {
+      var badge = document.getElementById('scansLeftBadge');
+      var text = document.getElementById('scansLeftText');
+      if (d.isPro) {
+        badge.style.display = 'block';
+        text.textContent = 'PRO - Unlimited Scans';
+        text.style.color = '#34D399';
+        text.style.borderColor = 'rgba(52,211,153,0.2)';
+        text.style.background = 'rgba(52,211,153,0.08)';
+      } else if (d.scansLeft !== undefined) {
+        badge.style.display = 'block';
+        text.textContent = d.scansLeft + '/20 free scans left';
+        if (d.scansLeft <= 5) { text.style.color = '#EF4444'; text.style.borderColor = 'rgba(239,68,68,0.2)'; text.style.background = 'rgba(239,68,68,0.08)'; }
+        else { text.style.color = ''; text.style.borderColor = ''; text.style.background = ''; }
+      }
+    }).catch(function() {});
   }
 
   function openCamera() {
@@ -2163,7 +2249,10 @@
         <div style="font-size:13px;font-weight:700;color:var(--text);" id="upiId">8141800084@ptaxis</div>
         <div style="font-size:10px;color:var(--text-muted);margin-top:4px;">Send payment + screenshot to WhatsApp</div>
       </div>
-      <button class="btn-scan" onclick="copyUPI()" style="margin-top:0;font-size:13px;padding:12px;">Copy UPI ID</button>
+      <div style="display:flex;gap:8px;">
+        <button class="btn-scan" onclick="copyUPI()" style="margin-top:0;font-size:12px;padding:11px;flex:1;">Copy UPI ID</button>
+        <button class="btn-scan" onclick="sendWhatsApp()" style="margin-top:0;font-size:12px;padding:11px;flex:1;background:linear-gradient(135deg,#25D366,#128C7E);">WhatsApp Proof</button>
+      </div>
       <button class="picker-cancel" onclick="closePaywall()" style="margin-top:8px;">Maybe Later</button>
     </div>
   </div>
@@ -2390,6 +2479,11 @@
       html += '<button class="picker-btn" onclick="addTileFromPicker({type:\'flower\',set:2,value:' + v + '})" style="color:#A78BFA;">' + v + '<span>S' + v + '</span></button>';
     }
     document.getElementById('pickerSeasons').innerHTML = html;
+  }
+  </script>
+  <script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').catch(function() {});
   }
   </script>
 </body>

@@ -65,7 +65,13 @@ function isPro(user) {
 
 // ---- PUBLIC API ----
 
-function register(username, password) {
+var REFERRAL_BONUS = 5; // extra scans for both referrer and new user
+
+function generateReferralCode(username) {
+  return username.toLowerCase().slice(0, 8) + crypto.randomBytes(3).toString('hex');
+}
+
+function register(username, password, referralCode) {
   var err = validateInput(username, password);
   if (err) return { ok: false, error: err };
 
@@ -74,6 +80,7 @@ function register(username, password) {
   if (db[key]) return { ok: false, error: 'Username already taken' };
 
   var hashed = hashPassword(password);
+  var refCode = generateReferralCode(username);
   db[key] = {
     name: sanitizeUsername(username),
     pass: hashed.hash,
@@ -83,10 +90,28 @@ function register(username, password) {
     proExpiry: null,
     scanDate: null,
     scanCount: 0,
-    totalScans: 0
+    totalScans: 0,
+    referralCode: refCode,
+    bonusScans: 0,
+    referrals: 0
   };
+
+  // Apply referral bonus if valid code provided
+  var referrerName = null;
+  if (referralCode && typeof referralCode === 'string') {
+    var refKey = Object.keys(db).find(function(k) {
+      return db[k].referralCode === referralCode.trim();
+    });
+    if (refKey && refKey !== key) {
+      db[refKey].bonusScans = (db[refKey].bonusScans || 0) + REFERRAL_BONUS;
+      db[refKey].referrals = (db[refKey].referrals || 0) + 1;
+      db[key].bonusScans = REFERRAL_BONUS;
+      referrerName = db[refKey].name;
+    }
+  }
+
   saveDB(db);
-  return { ok: true };
+  return { ok: true, referralCode: refCode, referrerName: referrerName };
 }
 
 function login(username, password) {
@@ -99,7 +124,7 @@ function login(username, password) {
   if (!user) return { ok: false, error: 'User not found' };
   if (!verifyPassword(password, user.pass, user.salt)) return { ok: false, error: 'Wrong password' };
 
-  return { ok: true, name: user.name, isPro: isPro(user), proExpiry: user.proExpiry };
+  return { ok: true, name: user.name, isPro: isPro(user), proExpiry: user.proExpiry, referralCode: user.referralCode || '' };
 }
 
 function getScansLeft(username) {
@@ -109,7 +134,8 @@ function getScansLeft(username) {
   if (!user) return 0;
   if (isPro(user)) return -1; // unlimited
   var used = user.totalScans || 0;
-  return Math.max(0, FREE_SCANS_TOTAL - used);
+  var limit = FREE_SCANS_TOTAL + (user.bonusScans || 0);
+  return Math.max(0, limit - used);
 }
 
 function recordScan(username) {
@@ -127,14 +153,15 @@ function recordScan(username) {
   }
 
   var used = user.totalScans || 0;
-  if (used >= FREE_SCANS_TOTAL) {
+  var limit = FREE_SCANS_TOTAL + (user.bonusScans || 0);
+  if (used >= limit) {
     return { allowed: false, error: 'Free scans used up. Upgrade to Pro for unlimited scans!', remaining: 0, isPro: false };
   }
 
   user.totalScans = used + 1;
   db[key] = user;
   saveDB(db);
-  return { allowed: true, remaining: FREE_SCANS_TOTAL - user.totalScans, isPro: false };
+  return { allowed: true, remaining: limit - user.totalScans, isPro: false };
 }
 
 // ---- ADMIN API ----

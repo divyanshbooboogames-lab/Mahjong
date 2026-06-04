@@ -140,8 +140,8 @@ app.post('/api/scan', async (req, res) => {
 
 // ---- AUTH API ----
 app.post('/api/register', (req, res) => {
-  const { username, password } = req.body;
-  const result = users.register(username, password);
+  const { username, password, referralCode } = req.body;
+  const result = users.register(username, password, referralCode);
   res.json(result);
 });
 
