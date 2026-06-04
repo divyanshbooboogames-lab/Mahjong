@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scorejong Admin</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Poppins', sans-serif; background: #1A0E14; color: #F5EAF0; min-height: 100vh; padding: 20px; }
+    .container { max-width: 500px; margin: 0 auto; }
+    h1 { font-size: 22px; text-align: center; margin-bottom: 6px; background: linear-gradient(135deg, #FF1493, #9333EA); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .subtitle { text-align: center; font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: rgba(245,234,240,0.4); margin-bottom: 24px; }
+    .card { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 20px; margin-bottom: 16px; }
+    .card-title { font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: rgba(245,234,240,0.4); margin-bottom: 12px; }
+    input, select { width: 100%; padding: 12px 14px; border-radius: 10px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1); color: #F5EAF0; font-family: 'Poppins', sans-serif; font-size: 13px; outline: none; margin-bottom: 10px; }
+    input:focus, select:focus { border-color: #FF1493; }
+    input::placeholder { color: rgba(245,234,240,0.3); }
+    select option { background: #2A1520; color: #F5EAF0; }
+    .btn { width: 100%; padding: 12px; border: none; border-radius: 12px; font-family: 'Poppins', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.2s; text-transform: uppercase; letter-spacing: 1px; }
+    .btn-primary { background: linear-gradient(135deg, #FF1493, #9333EA); color: #fff; }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(255,20,147,0.3); }
+    .btn-danger { background: rgba(239,68,68,0.2); color: #EF4444; border: 1px solid rgba(239,68,68,0.3); }
+    .btn-success { background: rgba(52,211,153,0.2); color: #34D399; border: 1px solid rgba(52,211,153,0.3); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .msg { text-align: center; font-size: 12px; padding: 8px; border-radius: 8px; margin-bottom: 10px; min-height: 20px; }
+    .msg.ok { background: rgba(52,211,153,0.15); color: #34D399; }
+    .msg.err { background: rgba(239,68,68,0.15); color: #EF4444; }
+    .user-list { max-height: 400px; overflow-y: auto; }
+    .user-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+    .user-row:last-child { border: none; }
+    .user-name { font-size: 13px; font-weight: 600; }
+    .user-meta { font-size: 10px; color: rgba(245,234,240,0.4); }
+    .badge { display: inline-block; font-size: 9px; font-weight: 700; padding: 2px 8px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .badge-pro { background: rgba(255,20,147,0.2); color: #FF1493; }
+    .badge-free { background: rgba(255,255,255,0.08); color: rgba(245,234,240,0.5); }
+    .stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+    .stat { text-align: center; padding: 12px 8px; background: rgba(255,255,255,0.04); border-radius: 10px; }
+    .stat-num { font-size: 20px; font-weight: 700; color: #FF1493; }
+    .stat-label { font-size: 9px; color: rgba(245,234,240,0.4); text-transform: uppercase; letter-spacing: 1px; }
+    .locked { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 60vh; }
+    .locked h2 { font-size: 16px; margin-bottom: 16px; color: rgba(245,234,240,0.6); }
+    #adminPanel { display: none; }
+    .row { display: flex; gap: 8px; }
+    .row > * { flex: 1; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>SCOREJONG</h1>
+    <div class="subtitle">Admin Panel</div>
+
+    <!-- Login Gate -->
+    <div id="adminLogin" class="locked">
+      <h2>Enter Admin Key</h2>
+      <div style="width:100%;max-width:300px;">
+        <input type="password" id="adminKeyInput" placeholder="Admin Key" autocomplete="off">
+        <div class="msg" id="loginMsg"></div>
+        <button class="btn btn-primary" onclick="adminAuth()">Unlock</button>
+      </div>
+    </div>
+
+    <!-- Admin Panel -->
+    <div id="adminPanel">
+
+      <!-- Stats -->
+      <div class="stats">
+        <div class="stat"><div class="stat-num" id="statTotal">-</div><div class="stat-label">Users</div></div>
+        <div class="stat"><div class="stat-num" id="statPro">-</div><div class="stat-label">Pro</div></div>
+        <div class="stat"><div class="stat-num" id="statScans">-</div><div class="stat-label">Scans</div></div>
+      </div>
+
+      <!-- Activate Pro -->
+      <div class="card">
+        <div class="card-title">Activate Pro</div>
+        <input type="text" id="actUser" placeholder="Username">
+        <select id="actPlan">
+          <option value="weekly">Weekly - 99 INR</option>
+          <option value="monthly" selected>Monthly - 299 INR</option>
+          <option value="yearly">Yearly - 1999 INR</option>
+        </select>
+        <div class="msg" id="actMsg"></div>
+        <button class="btn btn-success" onclick="activateUser()">Activate Pro</button>
+      </div>
+
+      <!-- Deactivate -->
+      <div class="card">
+        <div class="card-title">Deactivate Pro</div>
+        <input type="text" id="deactUser" placeholder="Username">
+        <div class="msg" id="deactMsg"></div>
+        <button class="btn btn-danger" onclick="deactivateUser()">Deactivate</button>
+      </div>
+
+      <!-- Reset Password -->
+      <div class="card">
+        <div class="card-title">Reset Password</div>
+        <input type="text" id="resetUser" placeholder="Username">
+        <input type="text" id="resetPass" placeholder="New Password">
+        <div class="msg" id="resetMsg"></div>
+        <button class="btn btn-primary" onclick="resetPw()">Reset Password</button>
+      </div>
+
+      <!-- User List -->
+      <div class="card">
+        <div class="card-title">All Users</div>
+        <div class="user-list" id="userList"><div class="user-meta" style="text-align:center;padding:20px;">Loading...</div></div>
+        <button class="btn btn-primary" onclick="loadUsers()" style="margin-top:10px;">Refresh</button>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+  var ADMIN_KEY = '';
+  var BASE = '';
+
+  function adminAuth() {
+    ADMIN_KEY = document.getElementById('adminKeyInput').value.trim();
+    if (!ADMIN_KEY) { showMsg('loginMsg', 'Enter your admin key', true); return; }
+    document.getElementById('loginMsg').textContent = 'Checking...';
+    fetch('/api/admin/users', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ adminKey: ADMIN_KEY })
+    }).then(function(r) { return r.json(); }).then(function(d) {
+      if (d.ok) {
+        document.getElementById('adminLogin').style.display = 'none';
+        document.getElementById('adminPanel').style.display = 'block';
+        renderUsers(d);
+      } else {
+        showMsg('loginMsg', 'Invalid admin key', true);
+        ADMIN_KEY = '';
+      }
+    }).catch(function() { showMsg('loginMsg', 'Connection error', true); });
+  }
+
+  document.getElementById('adminKeyInput').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') adminAuth();
+  });
+
+  function showMsg(id, text, isErr) {
+    var el = document.getElementById(id);
+    el.textContent = text;
+    el.className = 'msg ' + (isErr ? 'err' : 'ok');
+    if (!isErr) setTimeout(function() { el.textContent = ''; el.className = 'msg'; }, 4000);
+  }
+
+  function api(endpoint, body) {
+    body.adminKey = ADMIN_KEY;
+    return fetch('/api/admin/' + endpoint, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    }).then(function(r) { return r.json(); });
+  }
+
+  function loadUsers() {
+    api('users', {}).then(function(d) { if (d.ok) renderUsers(d); });
+  }
+
+  function renderUsers(data) {
+    var users = data.users || [];
+    document.getElementById('statTotal').textContent = users.length;
+    document.getElementById('statPro').textContent = users.filter(function(u) { return u.pro; }).length;
+    document.getElementById('statScans').textContent = users.reduce(function(s, u) { return s + (u.totalScans || 0); }, 0);
+
+    var list = document.getElementById('userList');
+    if (users.length === 0) { list.innerHTML = '<div class="user-meta" style="text-align:center;padding:20px;">No users yet</div>'; return; }
+
+    list.innerHTML = users.sort(function(a, b) { return (b.totalScans || 0) - (a.totalScans || 0); }).map(function(u) {
+      var badge = u.pro ? '<span class="badge badge-pro">PRO</span>' : '<span class="badge badge-free">FREE</span>';
+      var expiry = u.pro && u.proExpiry ? ' until ' + new Date(u.proExpiry).toLocaleDateString() : '';
+      return '<div class="user-row"><div><div class="user-name">' + u.name + ' ' + badge + '</div><div class="user-meta">' + (u.totalScans || 0) + ' scans &middot; joined ' + new Date(u.created).toLocaleDateString() + expiry + '</div></div></div>';
+    }).join('');
+  }
+
+  function activateUser() {
+    var user = document.getElementById('actUser').value.trim();
+    var plan = document.getElementById('actPlan').value;
+    if (!user) { showMsg('actMsg', 'Enter a username', true); return; }
+    api('activate', { username: user, plan: plan }).then(function(d) {
+      if (d.ok) { showMsg('actMsg', d.user + ' activated: ' + d.plan + ' until ' + new Date(d.expiry).toLocaleDateString()); loadUsers(); document.getElementById('actUser').value = ''; }
+      else showMsg('actMsg', d.error, true);
+    });
+  }
+
+  function deactivateUser() {
+    var user = document.getElementById('deactUser').value.trim();
+    if (!user) { showMsg('deactMsg', 'Enter a username', true); return; }
+    api('deactivate', { username: user }).then(function(d) {
+      if (d.ok) { showMsg('deactMsg', d.user + ' deactivated'); loadUsers(); document.getElementById('deactUser').value = ''; }
+      else showMsg('deactMsg', d.error, true);
+    });
+  }
+
+  function resetPw() {
+    var user = document.getElementById('resetUser').value.trim();
+    var pw = document.getElementById('resetPass').value;
+    if (!user || !pw) { showMsg('resetMsg', 'Enter username and new password', true); return; }
+    api('reset-password', { username: user, newPassword: pw }).then(function(d) {
+      if (d.ok) { showMsg('resetMsg', d.user + ' password reset'); document.getElementById('resetUser').value = ''; document.getElementById('resetPass').value = ''; }
+      else showMsg('resetMsg', d.error, true);
+    });
+  }
+  </script>
+</body>
+</html>
